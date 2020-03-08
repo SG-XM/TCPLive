@@ -397,13 +397,33 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                                 byte[] headOut = creatHead(outData,type);
                                 outputStream.write(headOut);
                                 outputStream.flush();
-                                Log.e("writeSteam", "加入头部后写入数据长度：" + headOut.length);
+//                                runOnUiThread(new Runnable() {
+//                                    @Override
+//                                    public void run() {
+//                                        Toast.makeText(MainActivity.this,"加入头部后写入数据长度：",Toast.LENGTH_SHORT).show();
+//
+//                                    }
+//                                });
+                                 Log.e("writeSteam", "加入头部后写入数据长度：" + headOut.length);
                             }
                         } else {
-                            Log.e("writeSteam", "发送失败，socket断开了连接");
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Toast.makeText(MainActivity.this,"发送失败，socket断开了连接",Toast.LENGTH_SHORT).show();
+
+                                }
+                            });
+                             Log.e("writeSteam", "发送失败，socket断开了连接");
                         }
                     } else {
-                        Log.e("writeSteam", "发送失败，socket关闭");
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this,"发送失败，socket关闭",Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                         Log.e("writeSteam", "发送失败，socket关闭");
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -465,7 +485,8 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                                     if(le==-1)continue;
                                     byte[] out = new byte[le];
                                     System.arraycopy(bytes, 0, out, 0, out.length);
-                                    Util.save(out, 0, out.length, path, true);
+                                  //  Util.save(out, 0, out.length, path, true);
+//                                    Toast.makeText(MainActivity.this,"接收的数据长度：" + out.length,Toast.LENGTH_SHORT).show();
                                     Log.e("readSteam", "接收的数据长度：" + out.length);
                                     if (le != -1) {
                                         byte[] addByte = new byte[out.length];
@@ -637,21 +658,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        try {
-                            ServerSocket serverSocket = new ServerSocket(4321);
-                            while (true){
-                                serverSocket.accept();
-                            }
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }).start();
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-
-                        socket = App.getInstance().getSocket();
+                        socket = App.getInstance().getSocket("47.101.33.252");
                         Message msg = Message.obtain();
 //                        if (socket == null) {
 //                            msg.what = 1;
@@ -674,6 +681,11 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     protected void onDestroy() {
         super.onDestroy();
         destroyCamera();
+        try {
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         mMediaCodec.stop();
         mMediaCodec.release();
         mMediaCodec = null;
