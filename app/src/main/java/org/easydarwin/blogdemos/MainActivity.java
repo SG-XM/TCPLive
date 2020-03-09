@@ -48,6 +48,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import static android.R.attr.data;
+import static org.easydarwin.blogdemos.App.SERVER_HOST;
 
 
 /**
@@ -103,6 +104,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                         startRecord();
                     } else {
                         stopPreview();
+                        threadListener.interrupt();
                     }
                     break;
                 case 4:
@@ -310,7 +312,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                             outData = iframeData;
                         }
                         //  将数据用socket传输
-                        writeData(outData,1);
+                        writeData(outData, 1);
 //                        mPlayer.decodeH264(outData);
                         mMediaCodec.releaseOutputBuffer(outputBufferIndex, false);
                         outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0);
@@ -332,14 +334,14 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
     };
 
-    private void codeCYuv(byte[] data){
+    private void codeCYuv(byte[] data) {
 
     }
 
     /**
      * 开始录音
      */
-    private void startRecord(){
+    private void startRecord() {
         isRecording = true;
         new Thread() {
             @Override
@@ -363,8 +365,8 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                         if (AudioRecord.ERROR_INVALID_OPERATION != bufferReadResult) {
                             //转成AAC编码
                             byte[] ret = aacMediaEncode.offerEncoder(buffer);
-                            Log.e("recod","aac大小："+ret.length);
-                            writeData(ret,2);
+                            Log.e("recod", "aac大小：" + ret.length);
+                            writeData(ret, 2);
                         }
                     }
                     //录制结束
@@ -393,8 +395,8 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                         if (socket.isConnected()) {
                             outputStream = socket.getOutputStream();
                             //给每一帧加一个自定义的头
-                            if (outData.length!=0){
-                                byte[] headOut = creatHead(outData,type);
+                            if (outData.length != 0) {
+                                byte[] headOut = creatHead(outData, type);
                                 outputStream.write(headOut);
                                 outputStream.flush();
 //                                runOnUiThread(new Runnable() {
@@ -404,26 +406,26 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
 //
 //                                    }
 //                                });
-                                 Log.e("writeSteam", "加入头部后写入数据长度：" + headOut.length);
+                                Log.e("writeSteam", "加入头部后写入数据长度：" + headOut.length);
                             }
                         } else {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    Toast.makeText(MainActivity.this,"发送失败，socket断开了连接",Toast.LENGTH_SHORT).show();
+                                    Toast.makeText(MainActivity.this, "发送失败，socket断开了连接", Toast.LENGTH_SHORT).show();
 
                                 }
                             });
-                             Log.e("writeSteam", "发送失败，socket断开了连接");
+                            Log.e("writeSteam", "发送失败，socket断开了连接");
                         }
                     } else {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                Toast.makeText(MainActivity.this,"发送失败，socket关闭",Toast.LENGTH_SHORT).show();
+                                Toast.makeText(MainActivity.this, "发送失败，socket关闭", Toast.LENGTH_SHORT).show();
                             }
                         });
-                         Log.e("writeSteam", "发送失败，socket关闭");
+                        Log.e("writeSteam", "发送失败，socket关闭");
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -436,18 +438,18 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     /**
      * 给每一帧添加一个头
      */
-    private byte[] creatHead(byte[] out,int type) {
+    private byte[] creatHead(byte[] out, int type) {
         String head = "";
-        if (type==1){
+        if (type == 1) {
             head = "start&video&" + System.currentTimeMillis() + "&" + out.length + "&end";
-        }else {
+        } else {
             head = "start&music&" + System.currentTimeMillis() + "&" + out.length + "&end";
         }
         byte[] headBytes = new byte[40];
         System.arraycopy(head.getBytes(), 0, headBytes, 0, head.getBytes().length);
         Log.e("writeSteam", "头部长度：" + headBytes.length);
-        for (byte b:"start".getBytes()){
-            Log.e("writeSteam", "头部数据："+b);
+        for (byte b : "start".getBytes()) {
+            Log.e("writeSteam", "头部数据：" + b);
         }
         if (headBytes[0] == 0x73 && headBytes[1] == 0x74 && headBytes[2] == 0x61 && headBytes[3] == 0x72 && headBytes[4] == 0x74) {
             Log.e("writeSteam", "确认是头部");
@@ -472,6 +474,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             @Override
             public void run() {
                 super.run();
+                socket = App.getInstance().getSocket(SERVER_HOST);
                 while (true) {
                     if (!socket.isClosed()) {
                         if (socket.isConnected()) {
@@ -482,10 +485,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                                     DataInputStream input = new DataInputStream(is);
                                     byte[] bytes = new byte[10000];
                                     int le = input.read(bytes);
-                                    if(le==-1)continue;
+                                    if (le == -1) continue;
                                     byte[] out = new byte[le];
                                     System.arraycopy(bytes, 0, out, 0, out.length);
-                                  //  Util.save(out, 0, out.length, path, true);
+                                    //  Util.save(out, 0, out.length, path, true);
 //                                    Toast.makeText(MainActivity.this,"接收的数据长度：" + out.length,Toast.LENGTH_SHORT).show();
                                     Log.e("readSteam", "接收的数据长度：" + out.length);
                                     if (le != -1) {
@@ -533,26 +536,26 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
 //                                                    index.add(i+40);
 //                                                    Log.e("readSteam", "==================================================================：" + frameLength+",    "+addByte.length);
 
-                                                    if (i+40+frameLength<=addByte.length){//表明还可以凑齐一帧
+                                                    if (i + 40 + frameLength <= addByte.length) {//表明还可以凑齐一帧
                                                         byte[] frameBy = new byte[frameLength];
-                                                        System.arraycopy(addByte, i+40, frameBy, 0, frameBy.length);
-                                                        if (type.equals("video")){
+                                                        System.arraycopy(addByte, i + 40, frameBy, 0, frameBy.length);
+                                                        if (type.equals("video")) {
                                                             mPlayer.decodeH264(frameBy);
-                                                        }else if (type.equals("music")){
+                                                        } else if (type.equals("music")) {
 
                                                         }
 
-                                                        i = i+38+frameLength;
+                                                        i = i + 38 + frameLength;
 //                                                        Thread.sleep(20);
-                                                    }else {
+                                                    } else {
                                                         //变成结余数据
-                                                        last = new byte[addByte.length-i];
+                                                        last = new byte[addByte.length - i];
                                                         System.arraycopy(addByte, i, last, 0, last.length);
                                                         break;
                                                     }
                                                 }
-                                            }else {//直接是剩余的
-                                                last = new byte[addByte.length-i];
+                                            } else {//直接是剩余的
+                                                last = new byte[addByte.length - i];
                                                 System.arraycopy(addByte, i, last, 0, last.length);
                                                 break;
                                             }
@@ -599,14 +602,18 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
      */
     public synchronized void stopPreview() {
         if (mCamera != null) {
-            mCamera.stopPreview();
-            mCamera.setPreviewCallbackWithBuffer(null);
+//            mCamera.stopPreview();
+//            mCamera.setPreviewCallbackWithBuffer(null);
             started = false;
             btnSwitch.setText("开始");
             try {
                 if (socket != null) {
                     if (socket.isConnected()) {
-                        socket.close();
+                        //socket.close();
+                        socket.shutdownInput();
+                        App.getInstance().removeSocket("47.101.33.252");
+                        // socket.shutdownOutput();
+
                     }
                 }
             } catch (IOException e) {
@@ -655,23 +662,25 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.btn_switch:
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        socket = App.getInstance().getSocket("47.101.33.252");
-                        Message msg = Message.obtain();
-//                        if (socket == null) {
-//                            msg.what = 1;
-//                            handler.sendMessage(msg);
-//                        } else if (!socket.isConnected()) {
-//                            msg.what = 2;
-//                            handler.sendMessage(msg);
-//                        } else {
-                            msg.what = 3;
-                            handler.sendMessage(msg);
-//                        }
-                    }
-                }).start();
+                Intent intent = new Intent(MainActivity.this,RecordActivity.class);
+                startActivity(intent);
+//                new Thread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        socket = App.getInstance().getSocket("47.101.33.252");
+//                        Message msg = Message.obtain();
+////                        if (socket == null) {
+////                            msg.what = 1;
+////                            handler.sendMessage(msg);
+////                        } else if (!socket.isConnected()) {
+////                            msg.what = 2;
+////                            handler.sendMessage(msg);
+////                        } else {
+//                        msg.what = 3;
+//                        handler.sendMessage(msg);
+////                        }
+//                    }
+//                }).start();
 
                 break;
         }
@@ -682,7 +691,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         super.onDestroy();
         destroyCamera();
         try {
-            socket.close();
+            // socket.close();
+            socket.shutdownInput();
+            //socket.shutdownOutput();
+
         } catch (IOException e) {
             e.printStackTrace();
         }

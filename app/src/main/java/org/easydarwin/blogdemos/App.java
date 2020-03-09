@@ -12,6 +12,7 @@ public class App extends Application {
 
     private static App sInstance;
 
+    public static final String SERVER_HOST = "47.101.33.252";
     private Socket socket;
     private final String HOST = "127.0.0.1";
     private final int PORT = 8081;
@@ -42,6 +43,10 @@ public class App extends Application {
         } else {
             return socket;
         }
+    }
+
+    public void removeSocket(String ip) {
+        sockets.remove(ip);
     }
 
     public static App getInstance() {

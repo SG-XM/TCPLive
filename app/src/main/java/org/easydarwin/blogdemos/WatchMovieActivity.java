@@ -132,6 +132,23 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
         surfaceView.getHolder().addCallback(this);
         surfaceView.getHolder().setFixedSize(getResources().getDisplayMetrics().widthPixels,
                 getResources().getDisplayMetrics().heightPixels);
+        surfaceView.post(new Runnable() {
+            @Override
+            public void run() {
+                mPlayer = new AvcDecode(width, height, video_play.getHolder().getSurface());
+                new Thread(){
+                    @Override
+                    public void run() {
+                        super.run();
+
+                        socket=App.getInstance().getSocket(App.SERVER_HOST);
+                        startSocketListener();
+                    }
+                }.start();
+
+            }
+        });
+
     }
 
     @Override
