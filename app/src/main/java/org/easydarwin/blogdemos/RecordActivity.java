@@ -28,8 +28,6 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.vilyever.socketclient.server.SocketServer;
-
 import org.easydarwin.blogdemos.audio.AacEncode;
 import org.easydarwin.blogdemos.hw.EncoderDebugger;
 import org.easydarwin.blogdemos.hw.NV21Convertor;
@@ -40,14 +38,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import static android.R.attr.data;
 import static org.easydarwin.blogdemos.App.SERVER_HOST;
 
 
@@ -628,8 +623,8 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
             try {
                 if (socket != null) {
                     if (socket.isConnected()) {
-                        //socket.close();
-                        socket.shutdownInput();
+                        socket.close();
+                        // socket.shutdownInput();
                         App.getInstance().removeSocket("47.101.33.252");
                         // socket.shutdownOutput();
 
@@ -685,6 +680,13 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                     @Override
                     public void run() {
                         socket = App.getInstance().getSocket("47.101.33.252");
+                        try {
+                            OutputStream out = socket.getOutputStream();
+                            out.write("666".getBytes());
+                            out.flush();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                         Message msg = Message.obtain();
 //                        if (socket == null) {
 //                            msg.what = 1;
@@ -708,8 +710,8 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
         super.onDestroy();
         destroyCamera();
         try {
-            // socket.close();
-            socket.shutdownInput();
+            socket.close();
+            //socket.shutdownInput();
             //socket.shutdownOutput();
 
         } catch (IOException e) {

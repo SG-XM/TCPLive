@@ -1,7 +1,6 @@
 package org.easydarwin.blogdemos;
 
 import android.Manifest;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
@@ -28,8 +27,6 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.vilyever.socketclient.server.SocketServer;
-
 import org.easydarwin.blogdemos.audio.AacEncode;
 import org.easydarwin.blogdemos.hw.EncoderDebugger;
 import org.easydarwin.blogdemos.hw.NV21Convertor;
@@ -40,14 +37,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import static android.R.attr.data;
+import static org.easydarwin.blogdemos.App.SERVER_HOST;
 
 
 /**
@@ -86,6 +80,70 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
 
     private byte[] last;
 
+    Camera.PreviewCallback previewCallback = new Camera.PreviewCallback() {
+        byte[] mPpsSps = new byte[0];
+
+        @Override
+        public void onPreviewFrame(byte[] data, Camera camera) {
+//            if (data == null) {
+//                return;
+//            }
+//            ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
+//            ByteBuffer[] outputBuffers = mMediaCodec.getOutputBuffers();
+//            byte[] dst = new byte[data.length];
+//            Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
+//            if (getDgree() == 0) {
+//                dst = Util.rotateNV21Degree90(data, previewSize.width, previewSize.height);
+//            } else {
+//                dst = data;
+//            }
+//            try {
+//                int bufferIndex = mMediaCodec.dequeueInputBuffer(5000000);
+//                if (bufferIndex >= 0) {
+//                    inputBuffers[bufferIndex].clear();
+//                    mConvertor.convert(dst, inputBuffers[bufferIndex]);
+//                    mMediaCodec.queueInputBuffer(bufferIndex, 0,
+//                            inputBuffers[bufferIndex].position(),
+//                            System.nanoTime() / 1000, 0);
+//                    MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+//                    int outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0);
+//                    while (outputBufferIndex >= 0) {
+//                        ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
+//                        byte[] outData = new byte[bufferInfo.size];
+//                        outputBuffer.get(outData);
+//                        //记录pps和sps
+//                        if (outData[0] == 0 && outData[1] == 0 && outData[2] == 0 && outData[3] == 1 && outData[4] == 103) {
+//                            mPpsSps = outData;
+//                        } else if (outData[0] == 0 && outData[1] == 0 && outData[2] == 0 && outData[3] == 1 && outData[4] == 101) {
+//                            //在关键帧前面加上pps和sps数据
+//                            byte[] iframeData = new byte[mPpsSps.length + outData.length];
+//                            System.arraycopy(mPpsSps, 0, iframeData, 0, mPpsSps.length);
+//                            System.arraycopy(outData, 0, iframeData, mPpsSps.length, outData.length);
+//                            outData = iframeData;
+//                        }
+//                        //  将数据用socket传输
+//                        writeData(outData, 1);
+////                        mPlayer.decodeH264(outData);
+//                        mMediaCodec.releaseOutputBuffer(outputBufferIndex, false);
+//                        outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0);
+//                    }
+//                } else {
+//                    Log.e("easypusher", "No buffer available !");
+//                }
+//            } catch (Exception e) {
+//                StringWriter sw = new StringWriter();
+//                PrintWriter pw = new PrintWriter(sw);
+//                e.printStackTrace(pw);
+//                String stack = sw.toString();
+//                Log.e("save_log", stack);
+//                e.printStackTrace();
+//            } finally {
+//                mCamera.addCallbackBuffer(dst);
+//            }
+        }
+
+    };
+    private Thread threadListener;
     private Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -99,13 +157,11 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                     break;
                 case 3:
                     if (!started) {
-                        Log.e("woggle","ggg");
-                        mPlayer = new AvcDecode(width, height, video_play.getHolder().getSurface());
-                        startSocketListener();
-//                        startPreview();
-//                        startRecord();
+                        startPreview();
+                        startRecord();
                     } else {
                         stopPreview();
+                        //threadListener.interrupt();
                     }
                     break;
                 case 4:
@@ -117,39 +173,6 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
             }
         }
     };
-    private Thread threadListener;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        btnSwitch = (Button) findViewById(R.id.btn_switch);
-        btnSwitch.setOnClickListener(this);
-        initMediaCodec();
-        surfaceView = (SurfaceView) findViewById(R.id.sv_surfaceview);
-        video_play = (SurfaceView) findViewById(R.id.video_play);
-        surfaceView.getHolder().addCallback(this);
-        surfaceView.getHolder().setFixedSize(getResources().getDisplayMetrics().widthPixels,
-                getResources().getDisplayMetrics().heightPixels);
-        surfaceView.post(new Runnable() {
-            @Override
-            public void run() {
-                mPlayer = new AvcDecode(width, height, video_play.getHolder().getSurface());
-                new Thread(){
-                    @Override
-                    public void run() {
-                        super.run();
-
-                        socket=App.getInstance().getSocket(App.SERVER_HOST);
-                        startSocketListener();
-                    }
-                }.start();
-
-            }
-        });
-
-    }
 
     @Override
     protected void onResume() {
@@ -229,12 +252,36 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getTitle().equals("看直播")) {
-            Intent intent = new Intent(this, WatchMovieActivity.class);
-            startActivity(intent);
-        }
-        return super.onOptionsItemSelected(item);
+    protected void onCreate(Bundle savedInstanceState) {
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        btnSwitch = (Button) findViewById(R.id.btn_switch);
+        btnSwitch.setOnClickListener(this);
+        initMediaCodec();
+        surfaceView = (SurfaceView) findViewById(R.id.sv_surfaceview);
+        video_play = (SurfaceView) findViewById(R.id.video_play);
+        surfaceView.getHolder().addCallback(this);
+        surfaceView.getHolder().setFixedSize(getResources().getDisplayMetrics().widthPixels,
+                getResources().getDisplayMetrics().heightPixels);
+//        surfaceView.post(new Runnable() {
+//            @Override
+//            public void run() {
+//                new Thread(){
+//                    @Override
+//                    public void run() {
+//                        super.run();
+//                        Log.e("woggle","ssssss");
+//                        socket = App.getInstance().getSocket("47.101.33.252");
+//                        startPreview();
+//                        startRecord();
+//                    }
+//                }.start();
+//
+//            }
+//        });
+
+
     }
 
     private boolean ctreateCamera(SurfaceHolder surfaceHolder) {
@@ -288,78 +335,23 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
         destroyCamera();
     }
 
-    Camera.PreviewCallback previewCallback = new Camera.PreviewCallback() {
-        byte[] mPpsSps = new byte[0];
-
-        @Override
-        public void onPreviewFrame(byte[] data, Camera camera) {
-            if (data == null) {
-                return;
-            }
-//            ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
-//            ByteBuffer[] outputBuffers = mMediaCodec.getOutputBuffers();
-//            byte[] dst = new byte[data.length];
-//            Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
-//            if (getDgree() == 0) {
-//                dst = Util.rotateNV21Degree90(data, previewSize.width, previewSize.height);
-//            } else {
-//                dst = data;
-//            }
-//            try {
-//                int bufferIndex = mMediaCodec.dequeueInputBuffer(5000000);
-//                if (bufferIndex >= 0) {
-//                    inputBuffers[bufferIndex].clear();
-//                    mConvertor.convert(dst, inputBuffers[bufferIndex]);
-//                    mMediaCodec.queueInputBuffer(bufferIndex, 0,
-//                            inputBuffers[bufferIndex].position(),
-//                            System.nanoTime() / 1000, 0);
-//                    MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-//                    int outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0);
-//                    while (outputBufferIndex >= 0) {
-//                        ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
-//                        byte[] outData = new byte[bufferInfo.size];
-//                        outputBuffer.get(outData);
-//                        //记录pps和sps
-//                        if (outData[0] == 0 && outData[1] == 0 && outData[2] == 0 && outData[3] == 1 && outData[4] == 103) {
-//                            mPpsSps = outData;
-//                        } else if (outData[0] == 0 && outData[1] == 0 && outData[2] == 0 && outData[3] == 1 && outData[4] == 101) {
-//                            //在关键帧前面加上pps和sps数据
-//                            byte[] iframeData = new byte[mPpsSps.length + outData.length];
-//                            System.arraycopy(mPpsSps, 0, iframeData, 0, mPpsSps.length);
-//                            System.arraycopy(outData, 0, iframeData, mPpsSps.length, outData.length);
-//                            outData = iframeData;
-//                        }
-//                        //  将数据用socket传输
-//                        writeData(outData,1);
-////                        mPlayer.decodeH264(outData);
-//                        mMediaCodec.releaseOutputBuffer(outputBufferIndex, false);
-//                        outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0);
-//                    }
-//                } else {
-//                    Log.e("easypusher", "No buffer available !");
-//                }
-//            } catch (Exception e) {
-//                StringWriter sw = new StringWriter();
-//                PrintWriter pw = new PrintWriter(sw);
-//                e.printStackTrace(pw);
-//                String stack = sw.toString();
-//                Log.e("save_log", stack);
-//                e.printStackTrace();
-//            } finally {
-//                mCamera.addCallbackBuffer(dst);
-//            }
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getTitle().equals("看直播")) {
+//            Intent intent = new Intent(this, WatchMovieActivity.class);
+//            startActivity(intent);
         }
+        return super.onOptionsItemSelected(item);
+    }
 
-    };
-
-    private void codeCYuv(byte[] data){
+    private void codeCYuv(byte[] data) {
 
     }
 
     /**
      * 开始录音
      */
-    private void startRecord(){
+    private void startRecord() {
         isRecording = true;
         new Thread() {
             @Override
@@ -383,8 +375,8 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                         if (AudioRecord.ERROR_INVALID_OPERATION != bufferReadResult) {
                             //转成AAC编码
                             byte[] ret = aacMediaEncode.offerEncoder(buffer);
-                            Log.e("recod","aac大小："+ret.length);
-                            writeData(ret,2);
+                            Log.e("recod", "aac大小：" + ret.length);
+                            writeData(ret, 2);
                         }
                     }
                     //录制结束
@@ -413,16 +405,36 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                         if (socket.isConnected()) {
                             outputStream = socket.getOutputStream();
                             //给每一帧加一个自定义的头
-                            if (outData.length!=0){
-                                byte[] headOut = creatHead(outData,type);
+                            if (outData.length != 0) {
+                                byte[] headOut = creatHead(outData, type);
                                 outputStream.write(headOut);
                                 outputStream.flush();
+//                                runOnUiThread(new Runnable() {
+//                                    @Override
+//                                    public void run() {
+//                                        Toast.makeText(WatchMovieActivity.this,"加入头部后写入数据长度：",Toast.LENGTH_SHORT).show();
+//
+//                                    }
+//                                });
                                 Log.e("writeSteam", "加入头部后写入数据长度：" + headOut.length);
                             }
                         } else {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Toast.makeText(WatchMovieActivity.this, "发送失败，socket断开了连接", Toast.LENGTH_SHORT).show();
+
+                                }
+                            });
                             Log.e("writeSteam", "发送失败，socket断开了连接");
                         }
                     } else {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(WatchMovieActivity.this, "发送失败，socket关闭", Toast.LENGTH_SHORT).show();
+                            }
+                        });
                         Log.e("writeSteam", "发送失败，socket关闭");
                     }
                 } catch (IOException e) {
@@ -436,18 +448,18 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
     /**
      * 给每一帧添加一个头
      */
-    private byte[] creatHead(byte[] out,int type) {
+    private byte[] creatHead(byte[] out, int type) {
         String head = "";
-        if (type==1){
+        if (type == 1) {
             head = "start&video&" + System.currentTimeMillis() + "&" + out.length + "&end";
-        }else {
+        } else {
             head = "start&music&" + System.currentTimeMillis() + "&" + out.length + "&end";
         }
         byte[] headBytes = new byte[40];
         System.arraycopy(head.getBytes(), 0, headBytes, 0, head.getBytes().length);
         Log.e("writeSteam", "头部长度：" + headBytes.length);
-        for (byte b:"start".getBytes()){
-            Log.e("writeSteam", "头部数据："+b);
+        for (byte b : "start".getBytes()) {
+            Log.e("writeSteam", "头部数据：" + b);
         }
         if (headBytes[0] == 0x73 && headBytes[1] == 0x74 && headBytes[2] == 0x61 && headBytes[3] == 0x72 && headBytes[4] == 0x74) {
             Log.e("writeSteam", "确认是头部");
@@ -472,29 +484,64 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
             @Override
             public void run() {
                 super.run();
+                socket = App.getInstance().getSocket(SERVER_HOST);
+
+//                st:while (true) {
+//                    if (!socket.isClosed()) {
+//                        if (socket.isConnected()) {
+//                            try {
+//                                InputStream is = socket.getInputStream();
+//                                DataInputStream input = new DataInputStream(is);
+//                                byte[] bytes = new byte[10000];
+//                                int le = input.read(bytes);
+//                                if (le == -1) continue;
+//                                byte[] out = new byte[le];
+//                                System.arraycopy(bytes, 0, out, 0, out.length);
+//                                for (int i = 0; i < out.length; i++) {
+//
+////                                            Log.e("readSteam", "接收的数据" + addByte[i]);
+//                                    if (i + 39 < out.length) {
+//                                        //先截取返回字符串的前40位，判断是否是头
+//                                        byte[] head = new byte[40];
+////                                                Log.e("readSteam", "所在位置：" + i);
+//                                        System.arraycopy(out, i, head, 0, head.length);
+//                                        //判读是否是帧头
+//                                        if (head[0] == 0x73 && head[1] == 0x74 && head[2] == 0x61 && head[3] == 0x72 && head[4] == 0x74) {
+//                                            last = new byte[out.length];
+//                                            System.arraycopy(out, 0, last, 0, last.length);
+//                                            break st;
+//                                        }
+//                                    }
+//                                }
+//                            } catch (IOException e) {
+//                                e.printStackTrace();
+//                            }
+//                        } else {
+////                            Log.e("readSteam", "接受失败，socket断开了连接");
+//                        }
+//                    } else {
+////                        Log.e("readSteam", "接受失败，socket关闭");
+//                    }
+//                }
+
+
                 while (true) {
                     if (!socket.isClosed()) {
                         if (socket.isConnected()) {
                             try {
-                                Log.e("woggle","ininininin");
                                 // 步骤1：创建输入流对象InputStream
                                 InputStream is = socket.getInputStream();
                                 if (is != null) {
-                                    Log.e("woggle","inininininisisisis");
                                     DataInputStream input = new DataInputStream(is);
                                     byte[] bytes = new byte[10000];
                                     int le = input.read(bytes);
-                                    if(le==-1)continue;
+                                    if (le == -1) continue;
                                     byte[] out = new byte[le];
                                     System.arraycopy(bytes, 0, out, 0, out.length);
+
                                     //  Util.save(out, 0, out.length, path, true);
-                                    runOnUiThread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            Toast.makeText(WatchMovieActivity.this,"接收的数据长度：" ,Toast.LENGTH_SHORT).show();
-                                        }
-                                    });
-                                     Log.e("readSteam", "接收的数据长度：" + out.length);
+//                                    Toast.makeText(WatchMovieActivity.this,"接收的数据长度：" + out.length,Toast.LENGTH_SHORT).show();
+                                    Log.e("readSteam", "接收的数据长度：" + out.length);
                                     if (le != -1) {
                                         byte[] addByte = new byte[out.length];
                                         if (last != null) {
@@ -540,26 +587,26 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
 //                                                    index.add(i+40);
 //                                                    Log.e("readSteam", "==================================================================：" + frameLength+",    "+addByte.length);
 
-                                                    if (i+40+frameLength<=addByte.length){//表明还可以凑齐一帧
+                                                    if (i + 40 + frameLength <= addByte.length) {//表明还可以凑齐一帧
                                                         byte[] frameBy = new byte[frameLength];
-                                                        System.arraycopy(addByte, i+40, frameBy, 0, frameBy.length);
-                                                        if (type.equals("video")){
+                                                        System.arraycopy(addByte, i + 40, frameBy, 0, frameBy.length);
+                                                        if (type.equals("video")) {
                                                             mPlayer.decodeH264(frameBy);
-                                                        }else if (type.equals("music")){
+                                                        } else if (type.equals("music")) {
 
                                                         }
 
-                                                        i = i+38+frameLength;
+                                                        i = i + 38 + frameLength;
 //                                                        Thread.sleep(20);
-                                                    }else {
+                                                    } else {
                                                         //变成结余数据
-                                                        last = new byte[addByte.length-i];
+                                                        last = new byte[addByte.length - i];
                                                         System.arraycopy(addByte, i, last, 0, last.length);
                                                         break;
                                                     }
                                                 }
-                                            }else {//直接是剩余的
-                                                last = new byte[addByte.length-i];
+                                            } else {//直接是剩余的
+                                                last = new byte[addByte.length - i];
                                                 System.arraycopy(addByte, i, last, 0, last.length);
                                                 break;
                                             }
@@ -570,26 +617,16 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                                 e.printStackTrace();
                             }
                         } else {
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Toast.makeText(WatchMovieActivity.this,"接受失败，socket断开了连接",Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                           Log.e("readSteam", "接受失败，socket断开了连接");
+//                            Log.e("readSteam", "接受失败，socket断开了连接");
                         }
                     } else {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                Toast.makeText(WatchMovieActivity.this,"接受失败，socket关闭",Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                        Log.e("readSteam", "接受失败，socket关闭");
+//                        Log.e("readSteam", "接受失败，socket关闭");
                     }
                 }
             }
-        };
+        }
+
+        ;
         threadListener.start();
     }
 
@@ -598,7 +635,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
      */
     public synchronized void startPreview() {
         if (mCamera != null && !started) {
-            mCamera.startPreview();
+            //mCamera.startPreview();
             int previewFormat = mCamera.getParameters().getPreviewFormat();
             Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
             int size = previewSize.width * previewSize.height
@@ -618,14 +655,18 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
      */
     public synchronized void stopPreview() {
         if (mCamera != null) {
-            mCamera.stopPreview();
-            mCamera.setPreviewCallbackWithBuffer(null);
+//            mCamera.stopPreview();
+//            mCamera.setPreviewCallbackWithBuffer(null);
             started = false;
             btnSwitch.setText("开始");
             try {
                 if (socket != null) {
                     if (socket.isConnected()) {
                         socket.close();
+                        // socket.shutdownInput();
+                        App.getInstance().removeSocket("47.101.33.252");
+                        // socket.shutdownOutput();
+
                     }
                 }
             } catch (IOException e) {
@@ -677,21 +718,14 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-//                        try {
-////                            ServerSocket serverSocket = new ServerSocket(4321);
-////                            while (true){
-////                                serverSocket.accept();
-////                            }
-//                        } catch (IOException e) {
-//                            e.printStackTrace();
-//                        }
-                    }
-                }).start();
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-
                         socket = App.getInstance().getSocket("47.101.33.252");
+                        try {
+                            OutputStream out = socket.getOutputStream();
+                            out.write("666".getBytes());
+                            out.flush();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                         Message msg = Message.obtain();
 //                        if (socket == null) {
 //                            msg.what = 1;
@@ -716,6 +750,9 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
         destroyCamera();
         try {
             socket.close();
+            //socket.shutdownInput();
+            //socket.shutdownOutput();
+
         } catch (IOException e) {
             e.printStackTrace();
         }
