@@ -542,6 +542,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                                     //  Util.save(out, 0, out.length, path, true);
 //                                    Toast.makeText(WatchMovieActivity.this,"接收的数据长度：" + out.length,Toast.LENGTH_SHORT).show();
                                     Log.e("readSteam", "接收的数据长度：" + out.length);
+                                    Log.e("readSteam", "s" + new String(out));
                                     if (le != -1) {
                                         byte[] addByte = new byte[out.length];
                                         if (last != null) {
@@ -573,9 +574,18 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
 //                                                Log.e("readSteam", "所在位置：" + i);
                                                 System.arraycopy(addByte, i, head, 0, head.length);
                                                 //判读是否是帧头
-                                                if (head[0] == 0x73 && head[1] == 0x74 && head[2] == 0x61 && head[3] == 0x72 && head[4] == 0x74) {
+                                                if (head[0] == 0x73 && head[1] == 0x74 && head[2] == 0x61 && head[3] == 0x72 && head[4] == 0x74 && head[6] == 0x76 && head[7] == 0x69 && head[8] == 0x64) {
 
+                                                    byte[] hh = new byte[50];
+                                                    System.arraycopy(addByte, i, hh, 0, hh.length);
+                                                    if (hh[i + 44] == 101) {
+                                                        Log.e("woggle", "gjz");
+                                                    } else {
+                                                        Log.e("woggle", "ugjz");
+                                                    }
                                                     String hd = new String(head);
+                                                    Log.e("woggle", hd);
+                                                    Log.e("woggle", hd);
                                                     String[] headSplit = hd.split("&");
                                                     for (String s : headSplit) {
 //                                                        Log.e("readSteam", "截取部分：" + s);
@@ -587,6 +597,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
 //                                                    index.add(i+40);
 //                                                    Log.e("readSteam", "==================================================================：" + frameLength+",    "+addByte.length);
 
+
                                                     if (i + 40 + frameLength <= addByte.length) {//表明还可以凑齐一帧
                                                         byte[] frameBy = new byte[frameLength];
                                                         System.arraycopy(addByte, i + 40, frameBy, 0, frameBy.length);
@@ -596,6 +607,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
 
                                                         }
 
+                                                        Log.e("woggle", new String(frameBy));
                                                         i = i + 38 + frameLength;
 //                                                        Thread.sleep(20);
                                                     } else {

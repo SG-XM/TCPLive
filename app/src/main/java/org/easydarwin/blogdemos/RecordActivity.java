@@ -10,6 +10,7 @@ import android.media.AudioRecord;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.media.MediaRecorder;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -68,7 +69,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
 
     private SurfaceView video_play;
     private AvcDecode mPlayer = null;
-
+    private int ifKeyFrame = 0;
 
     // 输出流对象
     OutputStream outputStream;
@@ -144,7 +145,6 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
 //        });
 
 
-
     }
 
     @Override
@@ -179,32 +179,79 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
         }
     }
 
+    Camera.PreviewCallback previewCallback = new Camera.PreviewCallback() {
+        byte[] mPpsSps = new byte[0];
 
-    private void initMediaCodec() {
-        int dgree = getDgree();
-        framerate = 15;
-        bitrate = 2 * width * height * framerate / 20;
-        EncoderDebugger debugger = EncoderDebugger.debug(getApplicationContext(), width, height);
-        mConvertor = debugger.getNV21Convertor();
-        try {
-            mMediaCodec = MediaCodec.createByCodecName(debugger.getEncoderName());
-            MediaFormat mediaFormat;
-            if (dgree == 0) {
-                mediaFormat = MediaFormat.createVideoFormat("video/avc", height, width);
-            } else {
-                mediaFormat = MediaFormat.createVideoFormat("video/avc", width, height);
+        @Override
+        public void onPreviewFrame(byte[] data, Camera camera) {
+            if (data == null) {
+                return;
             }
-            mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitrate);
-            mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, framerate);
-            mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT,
-                    debugger.getEncoderColorFormat());
-            mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
-            mMediaCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
-            mMediaCodec.start();
-        } catch (IOException e) {
-            e.printStackTrace();
+            ifKeyFrame++;
+            if (ifKeyFrame % 10 == 0 && Build.VERSION.SDK_INT >= 23) {
+                Bundle params = new Bundle();
+                params.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+                mMediaCodec.setParameters(params);
+            }
+
+
+            ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
+            ByteBuffer[] outputBuffers = mMediaCodec.getOutputBuffers();
+            byte[] dst = new byte[data.length];
+            Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
+            if (getDgree() == 0) {
+                dst = Util.rotateNV21Degree90(data, previewSize.width, previewSize.height);
+            } else {
+                dst = data;
+            }
+            try {
+                int bufferIndex = mMediaCodec.dequeueInputBuffer(5000000);
+                if (bufferIndex >= 0) {
+                    inputBuffers[bufferIndex].clear();
+                    mConvertor.convert(dst, inputBuffers[bufferIndex]);
+                    mMediaCodec.queueInputBuffer(bufferIndex, 0,
+                            inputBuffers[bufferIndex].position(),
+                            System.nanoTime() / 1000, 0);
+                    MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+                    int outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0);
+                    while (outputBufferIndex >= 0) {
+                        ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
+                        byte[] outData = new byte[bufferInfo.size];
+                        outputBuffer.get(outData);
+                        //记录pps和sps
+                        if (outData[0] == 0 && outData[1] == 0 && outData[2] == 0 && outData[3] == 1 && outData[4] == 103) {
+                            mPpsSps = outData;
+                            Log.e("wogglef", "pps");
+                        } else if (outData[0] == 0 && outData[1] == 0 && outData[2] == 0 && outData[3] == 1 && outData[4] == 101) {
+                            Log.e("wogglef", "iii");
+                            //在关键帧前面加上pps和sps数据
+                            byte[] iframeData = new byte[mPpsSps.length + outData.length];
+                            System.arraycopy(mPpsSps, 0, iframeData, 0, mPpsSps.length);
+                            System.arraycopy(outData, 0, iframeData, mPpsSps.length, outData.length);
+                            outData = iframeData;
+                        }
+                        //  将数据用socket传输
+                        writeData(outData, 1);
+//                        mPlayer.decodeH264(outData);
+                        mMediaCodec.releaseOutputBuffer(outputBufferIndex, false);
+                        outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0);
+                    }
+                } else {
+                    Log.e("easypusher", "No buffer available !");
+                }
+            } catch (Exception e) {
+                StringWriter sw = new StringWriter();
+                PrintWriter pw = new PrintWriter(sw);
+                e.printStackTrace(pw);
+                String stack = sw.toString();
+                Log.e("save_log", stack);
+                e.printStackTrace();
+            } finally {
+                mCamera.addCallbackBuffer(dst);
+            }
         }
-    }
+
+    };
 
     public static int[] determineMaximumSupportedFramerate(Camera.Parameters parameters) {
         int[] maxFps = new int[]{0, 0};
@@ -284,69 +331,33 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
         destroyCamera();
     }
 
-    Camera.PreviewCallback previewCallback = new Camera.PreviewCallback() {
-        byte[] mPpsSps = new byte[0];
-
-        @Override
-        public void onPreviewFrame(byte[] data, Camera camera) {
-            if (data == null) {
-                return;
-            }
-            ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
-            ByteBuffer[] outputBuffers = mMediaCodec.getOutputBuffers();
-            byte[] dst = new byte[data.length];
-            Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
-            if (getDgree() == 0) {
-                dst = Util.rotateNV21Degree90(data, previewSize.width, previewSize.height);
+    private void initMediaCodec() {
+        int dgree = getDgree();
+        framerate = 15;
+        bitrate = 2 * width * height * framerate / 20;
+        EncoderDebugger debugger = EncoderDebugger.debug(getApplicationContext(), width, height);
+        mConvertor = debugger.getNV21Convertor();
+        try {
+            mMediaCodec = MediaCodec.createByCodecName(debugger.getEncoderName());
+            MediaFormat mediaFormat;
+            if (dgree == 0) {
+                mediaFormat = MediaFormat.createVideoFormat("video/avc", height, width);
             } else {
-                dst = data;
+                mediaFormat = MediaFormat.createVideoFormat("video/avc", width, height);
             }
-            try {
-                int bufferIndex = mMediaCodec.dequeueInputBuffer(5000000);
-                if (bufferIndex >= 0) {
-                    inputBuffers[bufferIndex].clear();
-                    mConvertor.convert(dst, inputBuffers[bufferIndex]);
-                    mMediaCodec.queueInputBuffer(bufferIndex, 0,
-                            inputBuffers[bufferIndex].position(),
-                            System.nanoTime() / 1000, 0);
-                    MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-                    int outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0);
-                    while (outputBufferIndex >= 0) {
-                        ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
-                        byte[] outData = new byte[bufferInfo.size];
-                        outputBuffer.get(outData);
-                        //记录pps和sps
-                        if (outData[0] == 0 && outData[1] == 0 && outData[2] == 0 && outData[3] == 1 && outData[4] == 103) {
-                            mPpsSps = outData;
-                        } else if (outData[0] == 0 && outData[1] == 0 && outData[2] == 0 && outData[3] == 1 && outData[4] == 101) {
-                            //在关键帧前面加上pps和sps数据
-                            byte[] iframeData = new byte[mPpsSps.length + outData.length];
-                            System.arraycopy(mPpsSps, 0, iframeData, 0, mPpsSps.length);
-                            System.arraycopy(outData, 0, iframeData, mPpsSps.length, outData.length);
-                            outData = iframeData;
-                        }
-                        //  将数据用socket传输
-                        writeData(outData, 1);
-//                        mPlayer.decodeH264(outData);
-                        mMediaCodec.releaseOutputBuffer(outputBufferIndex, false);
-                        outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0);
-                    }
-                } else {
-                    Log.e("easypusher", "No buffer available !");
-                }
-            } catch (Exception e) {
-                StringWriter sw = new StringWriter();
-                PrintWriter pw = new PrintWriter(sw);
-                e.printStackTrace(pw);
-                String stack = sw.toString();
-                Log.e("save_log", stack);
-                e.printStackTrace();
-            } finally {
-                mCamera.addCallbackBuffer(dst);
-            }
-        }
+            mediaFormat.setInteger(MediaFormat.KEY_BIT_RATE, bitrate);
+            mediaFormat.setInteger(MediaFormat.KEY_FRAME_RATE, framerate);
+            mediaFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT,
+                    debugger.getEncoderColorFormat());
+            mediaFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
+            mMediaCodec.configure(mediaFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 
-    };
+
+            mMediaCodec.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     private void codeCYuv(byte[] data) {
 
