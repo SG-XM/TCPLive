@@ -27,6 +27,7 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 
+import org.easydarwin.blogdemos.audio.AACDecoderUtil;
 import org.easydarwin.blogdemos.audio.AacEncode;
 import org.easydarwin.blogdemos.hw.EncoderDebugger;
 import org.easydarwin.blogdemos.hw.NV21Convertor;
@@ -66,6 +67,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
 
     private SurfaceView video_play;
     private AvcDecode mPlayer = null;
+    private AACDecoderUtil audioUtil = null;
 
 
     // 输出流对象
@@ -158,7 +160,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                 case 3:
                     if (!started) {
                         startPreview();
-                        startRecord();
+                        //startRecord();
                     } else {
                         stopPreview();
                         //threadListener.interrupt();
@@ -397,52 +399,53 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
      * @param outData
      */
     private void writeData(final byte[] outData, final int type) {
-        new Thread() {
-            @Override
-            public void run() {
-                try {
-                    if (!socket.isClosed()) {
-                        if (socket.isConnected()) {
-                            outputStream = socket.getOutputStream();
-                            //给每一帧加一个自定义的头
-                            if (outData.length != 0) {
-                                byte[] headOut = creatHead(outData, type);
-                                outputStream.write(headOut);
-                                outputStream.flush();
-//                                runOnUiThread(new Runnable() {
-//                                    @Override
-//                                    public void run() {
-//                                        Toast.makeText(WatchMovieActivity.this,"加入头部后写入数据长度：",Toast.LENGTH_SHORT).show();
+//        new Thread() {
+//            @Override
+//            public void run() {
+//                try {
+//                    if (!socket.isClosed()) {
+//                        if (socket.isConnected()) {
+//                            outputStream = socket.getOutputStream();
+//                            //给每一帧加一个自定义的头
+//                            if (outData.length != 0) {
 //
-//                                    }
-//                                });
-                                Log.e("writeSteam", "加入头部后写入数据长度：" + headOut.length);
-                            }
-                        } else {
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Toast.makeText(WatchMovieActivity.this, "发送失败，socket断开了连接", Toast.LENGTH_SHORT).show();
-
-                                }
-                            });
-                            Log.e("writeSteam", "发送失败，socket断开了连接");
-                        }
-                    } else {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                Toast.makeText(WatchMovieActivity.this, "发送失败，socket关闭", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                        Log.e("writeSteam", "发送失败，socket关闭");
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    Log.e("writeSteam", "写入数据失败");
-                }
-            }
-        }.start();
+//                                byte[] headOut = creatHead(outData, type);
+//                                outputStream.write(headOut);
+//                                outputStream.flush();
+////                                runOnUiThread(new Runnable() {
+////                                    @Override
+////                                    public void run() {
+////                                        Toast.makeText(WatchMovieActivity.this,"加入头部后写入数据长度：",Toast.LENGTH_SHORT).show();
+////
+////                                    }
+////                                });
+//                                Log.e("writeSteam", "加入头部后写入数据长度：" + headOut.length);
+//                            }
+//                        } else {
+//                            runOnUiThread(new Runnable() {
+//                                @Override
+//                                public void run() {
+//                                    Toast.makeText(WatchMovieActivity.this, "发送失败，socket断开了连接", Toast.LENGTH_SHORT).show();
+//
+//                                }
+//                            });
+//                            Log.e("writeSteam", "发送失败，socket断开了连接");
+//                        }
+//                    } else {
+//                        runOnUiThread(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                Toast.makeText(WatchMovieActivity.this, "发送失败，socket关闭", Toast.LENGTH_SHORT).show();
+//                            }
+//                        });
+//                        Log.e("writeSteam", "发送失败，socket关闭");
+//                    }
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                    Log.e("writeSteam", "写入数据失败");
+//                }
+//            }
+//        }.start();
     }
 
     /**
@@ -574,18 +577,13 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
 //                                                Log.e("readSteam", "所在位置：" + i);
                                                 System.arraycopy(addByte, i, head, 0, head.length);
                                                 //判读是否是帧头
-                                                if (head[0] == 0x73 && head[1] == 0x74 && head[2] == 0x61 && head[3] == 0x72 && head[4] == 0x74 && head[6] == 0x76 && head[7] == 0x69 && head[8] == 0x64) {
+                                                if (head[0] == 0x73 && head[1] == 0x74 && head[2] == 0x61 && head[3] == 0x72 && head[4] == 0x74) {
 
                                                     byte[] hh = new byte[50];
                                                     System.arraycopy(addByte, i, hh, 0, hh.length);
-                                                    if (hh[i + 44] == 101) {
-                                                        Log.e("woggle", "gjz");
-                                                    } else {
-                                                        Log.e("woggle", "ugjz");
-                                                    }
                                                     String hd = new String(head);
                                                     Log.e("woggle", hd);
-                                                    Log.e("woggle", hd);
+                                                    //Log.e("woggle", hd);
                                                     String[] headSplit = hd.split("&");
                                                     for (String s : headSplit) {
 //                                                        Log.e("readSteam", "截取部分：" + s);
@@ -604,7 +602,13 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                                                         if (type.equals("video")) {
                                                             mPlayer.decodeH264(frameBy);
                                                         } else if (type.equals("music")) {
-
+                                                            Log.e("woggle", "shou");
+                                                            if (audioUtil == null) {
+                                                                audioUtil = new AACDecoderUtil();
+                                                                audioUtil.start();
+                                                            }
+                                                            audioUtil.decode(frameBy, 0, frameLength);
+                                                            Log.e("woggle", "shou1");
                                                         }
 
                                                         Log.e("woggle", new String(frameBy));
@@ -626,6 +630,8 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                                     }
                                 }
                             } catch (IOException e) {
+                                e.printStackTrace();
+                            } catch (Exception e) {
                                 e.printStackTrace();
                             }
                         } else {

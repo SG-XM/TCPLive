@@ -29,6 +29,7 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 
+import org.easydarwin.blogdemos.audio.AACDecoderUtil;
 import org.easydarwin.blogdemos.audio.AacEncode;
 import org.easydarwin.blogdemos.hw.EncoderDebugger;
 import org.easydarwin.blogdemos.hw.NV21Convertor;
@@ -69,6 +70,79 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
 
     private SurfaceView video_play;
     private AvcDecode mPlayer = null;
+    Camera.PreviewCallback previewCallback = new Camera.PreviewCallback() {
+        byte[] mPpsSps = new byte[0];
+
+        @Override
+        public void onPreviewFrame(byte[] data, Camera camera) {
+            if (data == null) {
+                return;
+            }
+            ifKeyFrame++;
+            if (ifKeyFrame % 10 == 0 && Build.VERSION.SDK_INT >= 23) {
+                Bundle params = new Bundle();
+                params.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+                mMediaCodec.setParameters(params);
+            }
+
+
+            ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
+            ByteBuffer[] outputBuffers = mMediaCodec.getOutputBuffers();
+            byte[] dst = new byte[data.length];
+            Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
+            if (getDgree() == 0) {
+                dst = Util.rotateNV21Degree90(data, previewSize.width, previewSize.height);
+            } else {
+                dst = data;
+            }
+            try {
+                int bufferIndex = mMediaCodec.dequeueInputBuffer(5000000);
+                if (bufferIndex >= 0) {
+                    inputBuffers[bufferIndex].clear();
+                    mConvertor.convert(dst, inputBuffers[bufferIndex]);
+                    mMediaCodec.queueInputBuffer(bufferIndex, 0,
+                            inputBuffers[bufferIndex].position(),
+                            System.nanoTime() / 1000, 0);
+                    MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+                    int outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0);
+                    while (outputBufferIndex >= 0) {
+                        ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
+                        byte[] outData = new byte[bufferInfo.size];
+                        outputBuffer.get(outData);
+                        //记录pps和sps
+                        if (outData[0] == 0 && outData[1] == 0 && outData[2] == 0 && outData[3] == 1 && outData[4] == 103) {
+                            mPpsSps = outData;
+//                            Log.e("wogglef", "pps");
+                        } else if (outData[0] == 0 && outData[1] == 0 && outData[2] == 0 && outData[3] == 1 && outData[4] == 101) {
+//                            Log.e("wogglef", "iii");
+                            //在关键帧前面加上pps和sps数据
+                            byte[] iframeData = new byte[mPpsSps.length + outData.length];
+                            System.arraycopy(mPpsSps, 0, iframeData, 0, mPpsSps.length);
+                            System.arraycopy(outData, 0, iframeData, mPpsSps.length, outData.length);
+                            outData = iframeData;
+                        }
+                        //  将数据用socket传输
+                        writeData(outData, 1);
+//                        mPlayer.decodeH264(outData);
+                        mMediaCodec.releaseOutputBuffer(outputBufferIndex, false);
+                        outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0);
+                    }
+                } else {
+                    Log.e("easypusher", "No buffer available !");
+                }
+            } catch (Exception e) {
+                StringWriter sw = new StringWriter();
+                PrintWriter pw = new PrintWriter(sw);
+                e.printStackTrace(pw);
+                String stack = sw.toString();
+                Log.e("save_log", stack);
+                e.printStackTrace();
+            } finally {
+                mCamera.addCallbackBuffer(dst);
+            }
+        }
+
+    };
     private int ifKeyFrame = 0;
 
     // 输出流对象
@@ -179,79 +253,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
         }
     }
 
-    Camera.PreviewCallback previewCallback = new Camera.PreviewCallback() {
-        byte[] mPpsSps = new byte[0];
-
-        @Override
-        public void onPreviewFrame(byte[] data, Camera camera) {
-            if (data == null) {
-                return;
-            }
-            ifKeyFrame++;
-            if (ifKeyFrame % 10 == 0 && Build.VERSION.SDK_INT >= 23) {
-                Bundle params = new Bundle();
-                params.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
-                mMediaCodec.setParameters(params);
-            }
-
-
-            ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
-            ByteBuffer[] outputBuffers = mMediaCodec.getOutputBuffers();
-            byte[] dst = new byte[data.length];
-            Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
-            if (getDgree() == 0) {
-                dst = Util.rotateNV21Degree90(data, previewSize.width, previewSize.height);
-            } else {
-                dst = data;
-            }
-            try {
-                int bufferIndex = mMediaCodec.dequeueInputBuffer(5000000);
-                if (bufferIndex >= 0) {
-                    inputBuffers[bufferIndex].clear();
-                    mConvertor.convert(dst, inputBuffers[bufferIndex]);
-                    mMediaCodec.queueInputBuffer(bufferIndex, 0,
-                            inputBuffers[bufferIndex].position(),
-                            System.nanoTime() / 1000, 0);
-                    MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-                    int outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0);
-                    while (outputBufferIndex >= 0) {
-                        ByteBuffer outputBuffer = outputBuffers[outputBufferIndex];
-                        byte[] outData = new byte[bufferInfo.size];
-                        outputBuffer.get(outData);
-                        //记录pps和sps
-                        if (outData[0] == 0 && outData[1] == 0 && outData[2] == 0 && outData[3] == 1 && outData[4] == 103) {
-                            mPpsSps = outData;
-                            Log.e("wogglef", "pps");
-                        } else if (outData[0] == 0 && outData[1] == 0 && outData[2] == 0 && outData[3] == 1 && outData[4] == 101) {
-                            Log.e("wogglef", "iii");
-                            //在关键帧前面加上pps和sps数据
-                            byte[] iframeData = new byte[mPpsSps.length + outData.length];
-                            System.arraycopy(mPpsSps, 0, iframeData, 0, mPpsSps.length);
-                            System.arraycopy(outData, 0, iframeData, mPpsSps.length, outData.length);
-                            outData = iframeData;
-                        }
-                        //  将数据用socket传输
-                        writeData(outData, 1);
-//                        mPlayer.decodeH264(outData);
-                        mMediaCodec.releaseOutputBuffer(outputBufferIndex, false);
-                        outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0);
-                    }
-                } else {
-                    Log.e("easypusher", "No buffer available !");
-                }
-            } catch (Exception e) {
-                StringWriter sw = new StringWriter();
-                PrintWriter pw = new PrintWriter(sw);
-                e.printStackTrace(pw);
-                String stack = sw.toString();
-                Log.e("save_log", stack);
-                e.printStackTrace();
-            } finally {
-                mCamera.addCallbackBuffer(dst);
-            }
-        }
-
-    };
+    private AACDecoderUtil audioUtil = null;
 
     public static int[] determineMaximumSupportedFramerate(Camera.Parameters parameters) {
         int[] maxFps = new int[]{0, 0};
@@ -391,6 +393,13 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                             //转成AAC编码
                             byte[] ret = aacMediaEncode.offerEncoder(buffer);
                             Log.e("recod", "aac大小：" + ret.length);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Toast.makeText(RecordActivity.this, "aac大小", Toast.LENGTH_SHORT).show();
+
+                                }
+                            });
                             writeData(ret, 2);
                         }
                     }
@@ -400,6 +409,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                     aacMediaEncode.close();
                     // dos.close();
                 } catch (Exception e) {
+                    e.printStackTrace();
                     e.printStackTrace();
                 }
             }
@@ -567,7 +577,12 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                                                         if (type.equals("video")) {
                                                             mPlayer.decodeH264(frameBy);
                                                         } else if (type.equals("music")) {
-
+                                                            Log.e("woggle", "music");
+                                                            if (audioUtil == null) {
+                                                                audioUtil = new AACDecoderUtil();
+                                                                audioUtil.start();
+                                                            }
+                                                            audioUtil.decode(frameBy, 0, frameLength);
                                                         }
 
                                                         i = i + 38 + frameLength;
