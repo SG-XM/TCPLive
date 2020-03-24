@@ -112,9 +112,9 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                         //记录pps和sps
                         if (outData[0] == 0 && outData[1] == 0 && outData[2] == 0 && outData[3] == 1 && outData[4] == 103) {
                             mPpsSps = outData;
-//                            Log.e("wogglef", "pps");
+                            Log.e("wogglef", "pps");
                         } else if (outData[0] == 0 && outData[1] == 0 && outData[2] == 0 && outData[3] == 1 && outData[4] == 101) {
-//                            Log.e("wogglef", "iii");
+                            Log.e("wogglef", "iii");
                             //在关键帧前面加上pps和sps数据
                             byte[] iframeData = new byte[mPpsSps.length + outData.length];
                             System.arraycopy(mPpsSps, 0, iframeData, 0, mPpsSps.length);
@@ -151,7 +151,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
     // 记录是否正在进行录制
     private boolean isRecording = false;
     //录制音频参数
-    private int frequence = 44100; //录制频率，单位hz.这里的值注意了，写的不好，可能实例化AudioRecord对象的时候，会出错。我开始写成11025就不行。这取决于硬件设备
+    private int frequence = 16100; //录制频率，单位hz.这里的值注意了，写的不好，可能实例化AudioRecord对象的时候，会出错。我开始写成11025就不行。这取决于硬件设备
     private int channelConfig = AudioFormat.CHANNEL_IN_MONO;
     private int audioEncoding = AudioFormat.ENCODING_PCM_16BIT;
 
@@ -296,13 +296,13 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
             List<Camera.Size> sizes = parameters.getSupportedPreviewSizes();
             parameters.setPreviewSize(width, height);
             parameters.setPreviewFpsRange(max[0], max[1]);
+            parameters.setFocusMode("auto");
             mCamera.setParameters(parameters);
 //            mCamera.autoFocus(null);
             int displayRotation;
             displayRotation = (cameraRotationOffset - getDgree() + 360) % 360;
             mCamera.setDisplayOrientation(displayRotation);
             mCamera.setPreviewDisplay(surfaceHolder);
-
             return true;
         } catch (Exception e) {
             StringWriter sw = new StringWriter();

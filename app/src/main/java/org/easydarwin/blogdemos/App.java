@@ -1,7 +1,6 @@
 package org.easydarwin.blogdemos;
 
 import android.app.Application;
-import android.util.Log;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -14,11 +13,8 @@ public class App extends Application {
 
     public static final String SERVER_HOST = "47.101.33.252";
     private Socket socket;
-    private final String HOST = "127.0.0.1";
     private final int PORT = 8081;
-
     private Map<String, Socket> sockets = new HashMap<>();
-
     public Socket getSocket(String ip) {
         if (sockets.get(ip) == null) {
             try {
@@ -35,7 +31,7 @@ public class App extends Application {
     public Socket getSocket() {
         if (socket == null) {
             try {
-                socket = new Socket(HOST, PORT);
+                socket = new Socket(SERVER_HOST, PORT);
             } catch (IOException e) {
                 e.printStackTrace();
             }
