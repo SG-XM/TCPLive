@@ -10,8 +10,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
- * @CreadBy ：DramaScript
- * @date 2017/8/22
+ * @CreadBy ：SGXN
+ * @date 2020/3/17
  */
 public class AacEncode {
 

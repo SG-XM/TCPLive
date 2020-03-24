@@ -12,8 +12,8 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 /**
- * @CreadBy ：DramaScript
- * @date 2017/8/25
+ * @CreadBy ：SGXN
+ * @date 2020/3/17
  */
 public class H264Decoder {
 

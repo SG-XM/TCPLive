@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.net.Socket;
 
 /**
- * @CreadBy ：DramaScript
- * @date 2017/8/24
+ * @CreadBy ：SGXM
+ * @date 2020/3/17
  */
 public class SocketInstance {
 

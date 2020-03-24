@@ -46,8 +46,8 @@ import static org.easydarwin.blogdemos.App.SERVER_HOST;
 
 
 /**
- * @CreadBy ：DramaScript
- * @date 2017/8/25
+ * @CreadBy ：SGXN
+ * @date 2020/3/17
  */
 public class WatchMovieActivity extends AppCompatActivity implements SurfaceHolder.Callback, View.OnClickListener {
 

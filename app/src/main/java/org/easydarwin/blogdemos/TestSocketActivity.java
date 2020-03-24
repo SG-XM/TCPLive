@@ -25,8 +25,6 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.vilyever.socketclient.server.SocketServer;
-
 import org.easydarwin.blogdemos.hw.EncoderDebugger;
 import org.easydarwin.blogdemos.hw.NV21Convertor;
 
@@ -44,8 +42,8 @@ import java.util.List;
 
 
 /**
- * @CreadBy ：DramaScript
- * @date 2017/8/25
+ * @CreadBy ：SGXN
+ * @date 2020/3/17
  */
 public class TestSocketActivity extends AppCompatActivity implements SurfaceHolder.Callback, View.OnClickListener {
 

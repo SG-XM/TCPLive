@@ -12,7 +12,6 @@ import org.easydarwin.blogdemos.network.HttpLoggingInterceptor
 import org.jetbrains.anko.toast
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.util.*
 import java.util.concurrent.TimeUnit
 
 
@@ -67,7 +66,7 @@ object CloseInterceptor : Interceptor {
 object AuthInterceptor : Interceptor {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun intercept(chain: Interceptor.Chain): Response {
-        return chain.proceed(chain.request().newBuilder().addHeader("Authorization", "Basic " + Base64.getEncoder().encode("cmw:cmw".toByteArray())).build())
+        return chain.proceed(chain.request().newBuilder().addHeader("Authorization", "Basic Y213OmNtdw==").build())
     }
 
 }

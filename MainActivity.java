@@ -52,8 +52,8 @@ import static android.R.attr.data;
 
 
 /**
- * @CreadBy ：DramaScript
- * @date 2017/8/25
+ * @CreadBy ：SGXN
+ * @date 2020/3/17
  */
 public class MainActivity extends AppCompatActivity implements SurfaceHolder.Callback, View.OnClickListener {
 

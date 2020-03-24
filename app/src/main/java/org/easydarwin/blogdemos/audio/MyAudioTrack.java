@@ -5,8 +5,8 @@ import android.media.AudioTrack;
 import android.util.Log;
 
 /**
- * @CreadBy ：DramaScript
- * @date 2017/9/19
+ * @CreadBy ：SGXN
+ * @date 2020/3/17
  */
 public class MyAudioTrack {
     private int mFrequency;// 采样率

@@ -1,5 +1,11 @@
 package org.easydarwin.blogdemos;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Message;
+import android.util.Log;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -9,15 +15,9 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.os.Handler;
-import android.os.Message;
-import android.util.Log;
-
 /**
- * @CreadBy ：DramaScript
- * @date 2017/8/24
+ * @CreadBy ：SGXM
+ * @date 2020/3/17
  */
 public class SocThread extends Thread {
 	private String ip = "192.168.155.205";

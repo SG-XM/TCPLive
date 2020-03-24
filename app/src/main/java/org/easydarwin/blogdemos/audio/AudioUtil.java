@@ -14,8 +14,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * @CreadBy ：DramaScript
- * @date 2017/9/1
+ * @CreadBy ：SGXN
+ * @date 2020/3/17
  */
 public class AudioUtil {
 

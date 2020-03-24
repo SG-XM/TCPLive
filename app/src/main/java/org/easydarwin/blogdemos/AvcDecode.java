@@ -8,11 +8,9 @@ import android.view.Surface;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import static android.R.attr.data;
-
 /**
- * @CreadBy ：DramaScript
- * @date 2017/8/29
+ * @CreadBy ：SGXM
+ * @date 2020/3/17
  */
 public class AvcDecode {
 

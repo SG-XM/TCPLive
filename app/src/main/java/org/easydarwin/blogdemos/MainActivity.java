@@ -28,8 +28,6 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.vilyever.socketclient.server.SocketServer;
-
 import org.easydarwin.blogdemos.audio.AacEncode;
 import org.easydarwin.blogdemos.hw.EncoderDebugger;
 import org.easydarwin.blogdemos.hw.NV21Convertor;
@@ -40,20 +38,17 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import static android.R.attr.data;
 import static org.easydarwin.blogdemos.App.SERVER_HOST;
 
 
 /**
- * @CreadBy ：DramaScript
- * @date 2017/8/25
+ * @CreadBy ：SGXN
+ * @date 2020/3/17
  */
 public class MainActivity extends AppCompatActivity implements SurfaceHolder.Callback, View.OnClickListener {
 
