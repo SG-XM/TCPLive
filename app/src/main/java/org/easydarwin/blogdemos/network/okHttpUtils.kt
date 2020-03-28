@@ -7,6 +7,7 @@ import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import org.easydarwin.blogdemos.App
 import org.easydarwin.blogdemos.commons.CommonContext
 import org.easydarwin.blogdemos.network.HttpLoggingInterceptor
 import org.jetbrains.anko.toast
@@ -72,7 +73,7 @@ object AuthInterceptor : Interceptor {
 }
 
 object ServiceFactory {
-    private const val BASE_URL = "http://47.101.33.252:8080/"
+    private const val BASE_URL = "http://${App.SERVER_HOST}:8080/"
     //private const val BASE_URL = "http://47.92.141.153/"
     private val loggingInterceptor = HttpLoggingInterceptor()
             .apply { level = HttpLoggingInterceptor.Level.BODY }

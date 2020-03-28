@@ -33,6 +33,8 @@ import org.easydarwin.blogdemos.audio.AACDecoderUtil;
 import org.easydarwin.blogdemos.audio.AacEncode;
 import org.easydarwin.blogdemos.hw.EncoderDebugger;
 import org.easydarwin.blogdemos.hw.NV21Convertor;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -513,9 +515,38 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                 while (true) {
                     if (!socket.isClosed()) {
                         if (socket.isConnected()) {
+                            OutputStream ot = null;
+                            InputStream is = null;
+                            try {
+                                ot = socket.getOutputStream();
+                                is = socket.getInputStream();
+                                ot.write(("SLbc83d1d6-1188-46d4-8515-cbc5cacc699b").getBytes());
+                                ot.flush();
+                                DataInputStream input = new DataInputStream(is);
+                                byte[] bytes = new byte[10000];
+                                int le = input.read(bytes);
+                                while (le == -1) {
+                                    le = input.read(bytes);
+                                }
+                                byte[] out = new byte[le];
+                                System.arraycopy(bytes, 0, out, 0, out.length);
+                                String ret = new String(out);
+                                JSONObject obj = new JSONObject(ret);
+                                int status = obj.getInt("status");
+                                if (status == 0) {
+                                    Log.e("woggle", "成功！");
+                                } else {
+                                    socket.close();
+                                }
+                            } catch (IOException e) {
+
+                                e.printStackTrace();
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
                             try {
                                 // 步骤1：创建输入流对象InputStream
-                                InputStream is = socket.getInputStream();
+
                                 if (is != null) {
                                     DataInputStream input = new DataInputStream(is);
                                     byte[] bytes = new byte[10000];
@@ -606,9 +637,11 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                                 e.printStackTrace();
                             }
                         } else {
+                            break;
 //                            Log.e("readSteam", "接受失败，socket断开了连接");
                         }
                     } else {
+                        break;
 //                        Log.e("readSteam", "接受失败，socket关闭");
                     }
                 }
@@ -651,7 +684,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                     if (socket.isConnected()) {
                         socket.close();
                         // socket.shutdownInput();
-                        App.getInstance().removeSocket("47.101.33.252");
+                        App.getInstance().removeSocket(SERVER_HOST);
                         // socket.shutdownOutput();
 
                     }
@@ -705,14 +738,14 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        socket = App.getInstance().getSocket("47.101.33.252");
-                        try {
-                            OutputStream out = socket.getOutputStream();
-                            out.write("666".getBytes());
-                            out.flush();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+                        socket = App.getInstance().getSocket(SERVER_HOST);
+//                        try {
+//                            OutputStream out = socket.getOutputStream();
+//                            out.write("666".getBytes());
+//                            out.flush();
+//                        } catch (IOException e) {
+//                            e.printStackTrace();
+//                        }
                         Message msg = Message.obtain();
 //                        if (socket == null) {
 //                            msg.what = 1;
@@ -743,6 +776,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
         } catch (IOException e) {
             e.printStackTrace();
         }
+        threadListener.interrupt();
         mMediaCodec.stop();
         mMediaCodec.release();
         mMediaCodec = null;
