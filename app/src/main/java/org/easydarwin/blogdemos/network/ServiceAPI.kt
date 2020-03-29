@@ -1,5 +1,6 @@
 package org.easydarwin.blogdemos.network
 
+import android.arch.lifecycle.MutableLiveData
 import com.twt.zq.commons.common.CommonBody
 import com.twt.zq.commons.common.ServiceFactory
 import com.twt.zq.commons.common.dealOrNull
@@ -21,20 +22,35 @@ interface ServiceAPI {
 
     @FormUrlEncoded
     @POST("/user/login")
-    fun login(@Field("mobile") mobile: String, @Field("smsCode") smsCode: String): Deferred<CommonBody<Any>>
+    fun login(@Field("mobile") mobile: String, @Field("smsCode") smsCode: String): Deferred<CommonBody<LoginBean>>
 
     @GET("/code/sms")
     fun sms(@Query("mobile") mobile: String): Deferred<CommonBody<Any>>
+
+    @GET("/room")
+    fun room(): Deferred<CommonBody<MutableList<RoomBean>>>
+
 
     companion object : ServiceAPI by ServiceFactory()
 }
 
 object ServiceModel {
+    var token: String = ""
+    val rooms = MutableLiveData<MutableList<RoomBean>>()
     fun login(mobile: String, code: String) {
         GlobalScope.launch(Dispatchers.Main + coroutineHandler) {
             ServiceAPI.login(mobile, code).await().dealOrNull {
                 toast("登录成功")
+                token = it!!.access_token!!
                 CommonContext.application.startActivity<HomeActivity>()
+            }
+        }
+    }
+
+    fun getRoom() {
+        GlobalScope.launch(Dispatchers.Main + coroutineHandler) {
+            ServiceAPI.room().await().dealOrNull {
+                rooms.value = it
             }
         }
     }
@@ -47,6 +63,26 @@ object ServiceModel {
         }
     }
 }
+
+
+data class RoomBean(
+        val active: Boolean,
+        val cover: String,
+        val createTime: String,
+        val id: Int,
+        val onlineUserCount: Int,
+        val updateTime: String,
+        val user: User
+)
+
+data class User(
+        val authorities: Any,
+        val createTime: String,
+        val id: Int,
+        val mobile: String,
+        val updateTime: String,
+        val username: String
+)
 
 data class LoginBean(
         val access_token: String,

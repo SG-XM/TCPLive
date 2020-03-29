@@ -42,4 +42,5 @@ dependencies {
     api 'com.jakewharton.retrofit:retrofit2-kotlin-coroutines-adapter:0.9.2'
     api 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.2.1'
     api 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.2.1'
+    api 'com.github.bumptech.glide:glide:4.8.0'
 }

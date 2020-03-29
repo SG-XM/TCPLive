@@ -1,4 +1,4 @@
-package org.easydarwin.blogdemos;
+package org.easydarwin.blogdemos.room;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -27,10 +27,15 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 
+import org.easydarwin.blogdemos.App;
+import org.easydarwin.blogdemos.AvcDecode;
+import org.easydarwin.blogdemos.R;
 import org.easydarwin.blogdemos.audio.AACDecoderUtil;
 import org.easydarwin.blogdemos.audio.AacEncode;
 import org.easydarwin.blogdemos.hw.EncoderDebugger;
 import org.easydarwin.blogdemos.hw.NV21Convertor;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -64,7 +69,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
     Button btnSwitch;
     boolean started = false;
     private Socket socket;
-
+    private int roomId;
     private SurfaceView video_play;
     private AvcDecode mPlayer = null;
     private AACDecoderUtil audioUtil = null;
@@ -258,6 +263,8 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        roomId = getIntent().getIntExtra("roomId", 0);
+
         btnSwitch = (Button) findViewById(R.id.btn_switch);
         btnSwitch.setOnClickListener(this);
         initMediaCodec();
@@ -531,9 +538,40 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                 while (true) {
                     if (!socket.isClosed()) {
                         if (socket.isConnected()) {
+
+                            OutputStream ot = null;
+                            InputStream is = null;
+                            try {
+                                ot = socket.getOutputStream();
+                                is = socket.getInputStream();
+                                ot.write(("SRbc83d1d6-1188-46d4-8515-cbc5cacc699b" + String.valueOf(roomId)).getBytes());
+                                ot.flush();
+                                DataInputStream input = new DataInputStream(is);
+                                byte[] bytes = new byte[10000];
+                                int le = input.read(bytes);
+                                while (le == -1) {
+                                    le = input.read(bytes);
+                                }
+                                byte[] out = new byte[le];
+                                System.arraycopy(bytes, 0, out, 0, out.length);
+                                String ret = new String(out);
+                                JSONObject obj = new JSONObject(ret);
+                                int status = obj.getInt("status");
+                                if (status == 0) {
+                                    Log.e("woggle", "成功！");
+                                } else {
+                                    socket.close();
+                                }
+                            } catch (IOException e) {
+
+                                e.printStackTrace();
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+
                             try {
                                 // 步骤1：创建输入流对象InputStream
-                                InputStream is = socket.getInputStream();
+                                is = socket.getInputStream();
                                 if (is != null) {
                                     DataInputStream input = new DataInputStream(is);
                                     byte[] bytes = new byte[10000];

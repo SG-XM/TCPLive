@@ -29,9 +29,9 @@ import org.easydarwin.blogdemos.App;
 import org.easydarwin.blogdemos.AvcDecode;
 import org.easydarwin.blogdemos.R;
 import org.easydarwin.blogdemos.Util;
-import org.easydarwin.blogdemos.WatchMovieActivity;
 import org.easydarwin.blogdemos.hw.EncoderDebugger;
 import org.easydarwin.blogdemos.hw.NV21Convertor;
+import org.easydarwin.blogdemos.room.WatchMovieActivity;
 
 import java.io.DataInputStream;
 import java.io.IOException;

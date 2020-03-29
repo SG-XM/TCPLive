@@ -31,6 +31,7 @@ import android.widget.Toast;
 import org.easydarwin.blogdemos.audio.AacEncode;
 import org.easydarwin.blogdemos.hw.EncoderDebugger;
 import org.easydarwin.blogdemos.hw.NV21Convertor;
+import org.easydarwin.blogdemos.room.WatchMovieActivity;
 
 import java.io.DataInputStream;
 import java.io.IOException;

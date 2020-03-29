@@ -33,6 +33,7 @@ import org.easydarwin.blogdemos.audio.AACDecoderUtil;
 import org.easydarwin.blogdemos.audio.AacEncode;
 import org.easydarwin.blogdemos.hw.EncoderDebugger;
 import org.easydarwin.blogdemos.hw.NV21Convertor;
+import org.easydarwin.blogdemos.room.WatchMovieActivity;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -450,7 +451,6 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                                 @Override
                                 public void run() {
                                     Toast.makeText(RecordActivity.this, "发送失败，socket断开了连接", Toast.LENGTH_SHORT).show();
-
                                 }
                             });
                             Log.e("writeSteam", "发送失败，socket断开了连接");

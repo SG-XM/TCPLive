@@ -16,9 +16,10 @@
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:supportsRtl="true"
         android:networkSecurityConfig="@xml/network_config"
+        android:supportsRtl="true"
         android:theme="@style/Theme.Design.NoActionBar">
+        <activity android:name=".room.RoomActivity"></activity>
         <activity android:name=".auth.LoginActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -26,13 +27,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".HomeActivity">
-
-        </activity>
+        <activity android:name=".HomeActivity"></activity>
         <activity android:name=".RecordActivity" />
         <activity android:name=".MainActivity" />
         <activity android:name=".video.VideoActivity" />
-        <activity android:name=".WatchMovieActivity" />
+        <activity android:name=".room.WatchMovieActivity" />
         <activity android:name=".audio.AudioTestActivity" />
     </application>
 

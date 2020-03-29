@@ -5,11 +5,11 @@ import android.support.annotation.RequiresApi
 import com.jakewharton.retrofit2.adapter.kotlin.coroutines.CoroutineCallAdapterFactory
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
-import okhttp3.Request
 import okhttp3.Response
 import org.easydarwin.blogdemos.App
 import org.easydarwin.blogdemos.commons.CommonContext
 import org.easydarwin.blogdemos.network.HttpLoggingInterceptor
+import org.easydarwin.blogdemos.network.ServiceModel
 import org.jetbrains.anko.toast
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -24,11 +24,11 @@ import java.util.concurrent.TimeUnit
 //    get() = if (header("Authorization") == null)
 //        newBuilder().addHeader("Authorization", "bearer ${CommonPreferences.token}").build()
 //    else this
-
-internal inline val Request.closed
-    get() = if (header("Connection") == null)
-        newBuilder().addHeader("Connection", "close").build()
-    else this
+//
+//internal inline val Request.closed
+//    get() = if (header("Connection") == null)
+//        newBuilder().addHeader("Connection", "close").build()
+//    else this
 
 //object CookieInterceptor : Interceptor {
 //    override fun intercept(chain: Interceptor.Chain): Response {
@@ -41,10 +41,10 @@ internal inline val Request.closed
 //    }
 //}
 
-object CloseInterceptor : Interceptor {
-    override fun intercept(chain: Interceptor.Chain): Response =
-            chain.proceed(chain.request().closed)
-}
+//object CloseInterceptor : Interceptor {
+//    override fun intercept(chain: Interceptor.Chain): Response =
+//            chain.proceed(chain.request().closed)
+//}
 
 //object SaveCookieInterceptor : Interceptor {
 //    override fun intercept(chain: Interceptor.Chain): Response {
@@ -67,7 +67,18 @@ object CloseInterceptor : Interceptor {
 object AuthInterceptor : Interceptor {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun intercept(chain: Interceptor.Chain): Response {
-        return chain.proceed(chain.request().newBuilder().addHeader("Authorization", "Basic Y213OmNtdw==").build())
+        if (chain.request().method() != "GET")
+            return chain.proceed(chain.request().newBuilder().addHeader("Authorization", "Basic Y213OmNtdw==").build())
+        else
+            return chain.proceed(chain.request())
+    }
+
+}
+
+object TokenInterceptor : Interceptor {
+    @RequiresApi(Build.VERSION_CODES.O)
+    override fun intercept(chain: Interceptor.Chain): Response {
+        return chain.proceed(chain.request().newBuilder().addHeader("Authorization", "Bearer " + ServiceModel.token).build())
     }
 
 }
@@ -80,8 +91,9 @@ object ServiceFactory {
     private val client = OkHttpClient.Builder()
             .retryOnConnectionFailure(true)
             //.authenticator(RealAuthenticator)
-            .addNetworkInterceptor(CloseInterceptor)
+//            .addNetworkInterceptor(CloseInterceptor)
             .addInterceptor(AuthInterceptor)
+            .addInterceptor(TokenInterceptor)
             //.addNetworkInterceptor(ErrorPushInterceptor)
             //  .addInterceptor(CookieInterceptor)
             .addNetworkInterceptor(loggingInterceptor)
