@@ -263,7 +263,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
     protected void onCreate(Bundle savedInstanceState) {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_main_watch);
         roomId = getIntent().getIntExtra("roomId", 0);
 
         btnSwitch = (Button) findViewById(R.id.btn_switch);
@@ -535,49 +535,52 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
 ////                        Log.e("readSteam", "接受失败，socket关闭");
 //                    }
 //                }
+                OutputStream ot = null;
+                InputStream is = null;
+                try {
+                    ot = socket.getOutputStream();
+                    is = socket.getInputStream();
+                    ot.write(("SR&" + ServiceModel.INSTANCE.getToken() + "&" + String.valueOf(roomId)).getBytes());
+                    ot.flush();
+                    DataInputStream input = new DataInputStream(is);
+                    byte[] bytes = new byte[10000];
+                    int le = input.read(bytes);
+                    while (le == -1) {
+                        le = input.read(bytes);
+                    }
+                    byte[] out = new byte[le];
+                    System.arraycopy(bytes, 0, out, 0, out.length);
+                    String ret = new String(out);
+                    JSONObject obj = new JSONObject(ret);
+                    int status = obj.getInt("status");
+                    Log.e("woggle", String.valueOf(status));
+                    if (status == 0) {
+                        Log.e("woggle", "成功！");
+                    } else {
+                        socket.close();
+                    }
+                } catch (IOException e) {
+
+                    e.printStackTrace();
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
 
 
                 while (true) {
                     if (!socket.isClosed()) {
                         if (socket.isConnected()) {
 
-                            OutputStream ot = null;
-                            InputStream is = null;
-                            try {
-                                ot = socket.getOutputStream();
-                                is = socket.getInputStream();
-                                ot.write(("SR" + ServiceModel.INSTANCE.getToken() + String.valueOf(roomId)).getBytes());
-                                ot.flush();
-                                DataInputStream input = new DataInputStream(is);
-                                byte[] bytes = new byte[10000];
-                                int le = input.read(bytes);
-                                while (le == -1) {
-                                    le = input.read(bytes);
-                                }
-                                byte[] out = new byte[le];
-                                System.arraycopy(bytes, 0, out, 0, out.length);
-                                String ret = new String(out);
-                                JSONObject obj = new JSONObject(ret);
-                                int status = obj.getInt("status");
-                                if (status == 0) {
-                                    Log.e("woggle", "成功！");
-                                } else {
-                                    socket.close();
-                                }
-                            } catch (IOException e) {
-
-                                e.printStackTrace();
-                            } catch (JSONException e) {
-                                e.printStackTrace();
-                            }
 
                             try {
                                 // 步骤1：创建输入流对象InputStream
-                                is = socket.getInputStream();
+//                                is = socket.getInputStream();
+//                                Log.e
                                 if (is != null) {
                                     DataInputStream input = new DataInputStream(is);
                                     byte[] bytes = new byte[10000];
                                     int le = input.read(bytes);
+                                    Log.e("woggle", "readin" + le);
                                     if (le == -1) continue;
                                     byte[] out = new byte[le];
                                     System.arraycopy(bytes, 0, out, 0, out.length);
@@ -670,21 +673,21 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                                     }
                                 }
                             } catch (IOException e) {
+                                Log.e("readSteam", "IO");
                                 e.printStackTrace();
                             } catch (Exception e) {
+                                Log.e("readSteam", "E");
                                 e.printStackTrace();
                             }
                         } else {
-//                            Log.e("readSteam", "接受失败，socket断开了连接");
+                            Log.e("readSteam", "接受失败，socket断开了连接");
                         }
                     } else {
-//                        Log.e("readSteam", "接受失败，socket关闭");
+                        Log.e("readSteam", "接受失败，socket关闭");
                     }
                 }
             }
-        }
-
-        ;
+        };
         threadListener.start();
     }
 
@@ -702,7 +705,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
             mCamera.addCallbackBuffer(new byte[size]);
             mCamera.setPreviewCallbackWithBuffer(previewCallback);
             started = true;
-            btnSwitch.setText("停止");
+            btnSwitch.setText("");
             mPlayer = new AvcDecode(width, height, video_play.getHolder().getSurface());
             startSocketListener();
         }

@@ -60,6 +60,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
 
     String path = Environment.getExternalStorageDirectory() + "/vv831.h264";
 
+    private Boolean socketAble = true;
     int width = 640, height = 480;
     int framerate, bitrate;
     int mCameraId = Camera.CameraInfo.CAMERA_FACING_BACK;
@@ -155,7 +156,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
     // 记录是否正在进行录制
     private boolean isRecording = false;
     //录制音频参数
-    private int frequence = 16100; //录制频率，单位hz.这里的值注意了，写的不好，可能实例化AudioRecord对象的时候，会出错。我开始写成11025就不行。这取决于硬件设备
+    private int frequence = 41000; //录制频率，单位hz.这里的值注意了，写的不好，可能实例化AudioRecord对象的时候，会出错。我开始写成11025就不行。这取决于硬件设备
     private int channelConfig = AudioFormat.CHANNEL_IN_MONO;
     private int audioEncoding = AudioFormat.ENCODING_PCM_16BIT;
 
@@ -221,7 +222,12 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
 //
 //            }
 //        });
-
+        surfaceView.post(new Runnable() {
+            @Override
+            public void run() {
+                btnSwitch.performClick();
+            }
+        });
 
     }
 
@@ -300,7 +306,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
             List<Camera.Size> sizes = parameters.getSupportedPreviewSizes();
             parameters.setPreviewSize(width, height);
             parameters.setPreviewFpsRange(max[0], max[1]);
-            parameters.setFocusMode("auto");
+            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
             mCamera.setParameters(parameters);
 //            mCamera.autoFocus(null);
             int displayRotation;
@@ -428,6 +434,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
      * @param outData
      */
     private void writeData(final byte[] outData, final int type) {
+        if (!socketAble) return;
         new Thread() {
             @Override
             public void run() {
@@ -469,6 +476,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
+                    finish();
                     Log.e("writeSteam", "写入数据失败");
                 }
             }
@@ -523,7 +531,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                             try {
                                 ot = socket.getOutputStream();
                                 is = socket.getInputStream();
-                                ot.write(("SL" + ServiceModel.INSTANCE.getToken()).getBytes());
+                                ot.write(("SL&" + ServiceModel.INSTANCE.getToken()).getBytes());
                                 ot.flush();
                                 DataInputStream input = new DataInputStream(is);
                                 byte[] bytes = new byte[10000];

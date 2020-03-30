@@ -35,7 +35,7 @@ interface ServiceAPI {
 }
 
 object ServiceModel {
-    var token: String = "ac30717c-9520-439d-8009-b1e832898e33"
+    var token: String = "1ccc45bc-5404-4a70-9e6d-7dea10b9938b"
     val rooms = MutableLiveData<MutableList<RoomBean>>()
     fun login(mobile: String, code: String) {
         GlobalScope.launch(Dispatchers.Main + coroutineHandler) {

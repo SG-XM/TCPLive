@@ -28,10 +28,14 @@
             </intent-filter>
         </activity>
         <activity android:name=".HomeActivity"></activity>
-        <activity android:name=".RecordActivity" />
+        <activity
+            android:name=".RecordActivity"
+            android:screenOrientation="landscape" />
         <activity android:name=".MainActivity" />
         <activity android:name=".video.VideoActivity" />
-        <activity android:name=".room.WatchMovieActivity" />
+        <activity
+            android:name=".room.WatchMovieActivity"
+            android:screenOrientation="landscape" />
         <activity android:name=".audio.AudioTestActivity" />
     </application>
 

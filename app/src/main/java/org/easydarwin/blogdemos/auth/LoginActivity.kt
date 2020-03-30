@@ -9,6 +9,7 @@ import kotlinx.android.synthetic.main.activity_login.*
 import org.easydarwin.blogdemos.HomeActivity
 import org.easydarwin.blogdemos.R
 import org.easydarwin.blogdemos.commons.CommonContext
+import org.easydarwin.blogdemos.modifyText
 import org.easydarwin.blogdemos.network.ServiceModel
 import org.jetbrains.anko.startActivity
 import org.jetbrains.anko.toast
@@ -37,6 +38,8 @@ class LoginActivity : AppCompatActivity() {
         setContentView(R.layout.activity_login)
         CommonContext.registerContext(this)
         bt_login.setOnClickListener {
+
+
             CommonContext.application.startActivity<HomeActivity>()
             finish()
             if (code_input.text.isEmpty()) {
@@ -48,6 +51,9 @@ class LoginActivity : AppCompatActivity() {
             //startActivity<HomeActivity>()
         }
         btn_send.setOnClickListener {
+            modifyText {
+                ServiceModel.token = it
+            }
             if (account_input.text.isEmpty()) {
                 toast("请输入手机号")
                 return@setOnClickListener
