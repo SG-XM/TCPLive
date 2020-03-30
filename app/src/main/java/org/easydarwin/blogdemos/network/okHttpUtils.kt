@@ -5,6 +5,7 @@ import android.support.annotation.RequiresApi
 import com.jakewharton.retrofit2.adapter.kotlin.coroutines.CoroutineCallAdapterFactory
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.Response
 import org.easydarwin.blogdemos.App
 import org.easydarwin.blogdemos.commons.CommonContext
@@ -25,10 +26,10 @@ import java.util.concurrent.TimeUnit
 //        newBuilder().addHeader("Authorization", "bearer ${CommonPreferences.token}").build()
 //    else this
 //
-//internal inline val Request.closed
-//    get() = if (header("Connection") == null)
-//        newBuilder().addHeader("Connection", "close").build()
-//    else this
+internal inline val Request.closed
+    get() = if (header("Connection") == null)
+        newBuilder().addHeader("Connection", "close").build()
+    else this
 
 //object CookieInterceptor : Interceptor {
 //    override fun intercept(chain: Interceptor.Chain): Response {
@@ -41,10 +42,10 @@ import java.util.concurrent.TimeUnit
 //    }
 //}
 
-//object CloseInterceptor : Interceptor {
-//    override fun intercept(chain: Interceptor.Chain): Response =
-//            chain.proceed(chain.request().closed)
-//}
+object CloseInterceptor : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response =
+            chain.proceed(chain.request().closed)
+}
 
 //object SaveCookieInterceptor : Interceptor {
 //    override fun intercept(chain: Interceptor.Chain): Response {
@@ -78,7 +79,10 @@ object AuthInterceptor : Interceptor {
 object TokenInterceptor : Interceptor {
     @RequiresApi(Build.VERSION_CODES.O)
     override fun intercept(chain: Interceptor.Chain): Response {
-        return chain.proceed(chain.request().newBuilder().addHeader("Authorization", "Bearer " + ServiceModel.token).build())
+//        if(chain.request().url().toString())
+        if (!chain.request().url().pathSegments().contains("sms") && !chain.request().url().pathSegments().contains("login"))
+            return chain.proceed(chain.request().newBuilder().addHeader("Authorization", "Bearer " + ServiceModel.token).build())
+        else return chain.proceed(chain.request())
     }
 
 }
@@ -91,7 +95,7 @@ object ServiceFactory {
     private val client = OkHttpClient.Builder()
             .retryOnConnectionFailure(true)
             //.authenticator(RealAuthenticator)
-//            .addNetworkInterceptor(CloseInterceptor)
+            .addNetworkInterceptor(CloseInterceptor)
             .addInterceptor(AuthInterceptor)
             .addInterceptor(TokenInterceptor)
             //.addNetworkInterceptor(ErrorPushInterceptor)

@@ -48,7 +48,7 @@ import static org.easydarwin.blogdemos.App.SERVER_HOST;
 
 
 /**
- * @CreadBy ：SGXN
+ * @CreadBy ：SGXM
  * @date 2020/3/17
  */
 public class MainActivity extends AppCompatActivity implements SurfaceHolder.Callback, View.OnClickListener {

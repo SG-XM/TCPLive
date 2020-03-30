@@ -21,6 +21,14 @@ import org.jetbrains.anko.startActivity
 
 
 class RoomItem(val bean: RoomBean) : Item {
+    override fun areItemsTheSame(newItem: Item): Boolean {
+        return super.areItemsTheSame(newItem)
+    }
+
+    override fun areContentsTheSame(newItem: Item): Boolean {
+        return (newItem as? RoomItem)?.bean?.id == this.bean.id
+    }
+
     companion object : ItemController {
         override fun onCreateViewHolder(parent: ViewGroup): RecyclerView.ViewHolder {
             val view = parent.context.layoutInflater.inflate(R.layout.item_room, parent, false)

@@ -4,12 +4,13 @@ import android.arch.lifecycle.MutableLiveData
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.support.v7.app.AppCompatActivity
-import android.util.Log
 import com.twt.zq.commons.extentions.bindNonNull
 import kotlinx.android.synthetic.main.activity_login.*
+import org.easydarwin.blogdemos.HomeActivity
 import org.easydarwin.blogdemos.R
 import org.easydarwin.blogdemos.commons.CommonContext
 import org.easydarwin.blogdemos.network.ServiceModel
+import org.jetbrains.anko.startActivity
 import org.jetbrains.anko.toast
 
 class LoginActivity : AppCompatActivity() {
@@ -26,7 +27,7 @@ class LoginActivity : AppCompatActivity() {
         }
 
         override fun onTick(millisUntilFinished: Long) {
-            Log.e("woggle", "1")
+            // Log.e("woggle", "1")
             //CommonContext.application.toast("millisUntilFinished.toInt() / 1000")
             vercodetimeLiveData.value = millisUntilFinished.toInt() / 1000
         }
@@ -36,6 +37,8 @@ class LoginActivity : AppCompatActivity() {
         setContentView(R.layout.activity_login)
         CommonContext.registerContext(this)
         bt_login.setOnClickListener {
+            CommonContext.application.startActivity<HomeActivity>()
+            finish()
             if (code_input.text.isEmpty()) {
                 toast("请输入验证码")
                 return@setOnClickListener

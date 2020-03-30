@@ -34,6 +34,7 @@ import org.easydarwin.blogdemos.audio.AACDecoderUtil;
 import org.easydarwin.blogdemos.audio.AacEncode;
 import org.easydarwin.blogdemos.hw.EncoderDebugger;
 import org.easydarwin.blogdemos.hw.NV21Convertor;
+import org.easydarwin.blogdemos.network.ServiceModel;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -51,7 +52,7 @@ import static org.easydarwin.blogdemos.App.SERVER_HOST;
 
 
 /**
- * @CreadBy ：SGXN
+ * @CreadBy ：SGXM
  * @date 2020/3/17
  */
 public class WatchMovieActivity extends AppCompatActivity implements SurfaceHolder.Callback, View.OnClickListener {
@@ -290,7 +291,8 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
 //            }
 //        });
 
-
+        Log.e("woggle", "why" + roomId);
+        btnSwitch.performClick();
     }
 
     private boolean ctreateCamera(SurfaceHolder surfaceHolder) {
@@ -544,7 +546,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                             try {
                                 ot = socket.getOutputStream();
                                 is = socket.getInputStream();
-                                ot.write(("SRbc83d1d6-1188-46d4-8515-cbc5cacc699b" + String.valueOf(roomId)).getBytes());
+                                ot.write(("SR" + ServiceModel.INSTANCE.getToken() + String.valueOf(roomId)).getBytes());
                                 ot.flush();
                                 DataInputStream input = new DataInputStream(is);
                                 byte[] bytes = new byte[10000];
@@ -774,14 +776,8 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        socket = App.getInstance().getSocket("47.101.33.252");
-                        try {
-                            OutputStream out = socket.getOutputStream();
-                            out.write("666".getBytes());
-                            out.flush();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+                        socket = App.getInstance().getSocket(SERVER_HOST);
+
                         Message msg = Message.obtain();
 //                        if (socket == null) {
 //                            msg.what = 1;

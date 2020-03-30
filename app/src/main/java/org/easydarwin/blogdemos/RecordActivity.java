@@ -33,6 +33,7 @@ import org.easydarwin.blogdemos.audio.AACDecoderUtil;
 import org.easydarwin.blogdemos.audio.AacEncode;
 import org.easydarwin.blogdemos.hw.EncoderDebugger;
 import org.easydarwin.blogdemos.hw.NV21Convertor;
+import org.easydarwin.blogdemos.network.ServiceModel;
 import org.easydarwin.blogdemos.room.WatchMovieActivity;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -52,7 +53,7 @@ import static org.easydarwin.blogdemos.App.SERVER_HOST;
 
 
 /**
- * @CreadBy ：SGXN
+ * @CreadBy ：SGXM
  * @date 2020/3/17
  */
 public class RecordActivity extends AppCompatActivity implements SurfaceHolder.Callback, View.OnClickListener {
@@ -70,7 +71,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
     Button btnSwitch;
     boolean started = false;
     private Socket socket;
-
+    private Thread audioThread;
     private SurfaceView video_play;
     private AvcDecode mPlayer = null;
     Camera.PreviewCallback previewCallback = new Camera.PreviewCallback() {
@@ -373,7 +374,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
      */
     private void startRecord() {
         isRecording = true;
-        new Thread() {
+        audioThread = new Thread() {
             @Override
             public void run() {
                 super.run();
@@ -412,11 +413,13 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                     aacMediaEncode.close();
                     // dos.close();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    // stop();
+                    isRecording = false;
                     e.printStackTrace();
                 }
             }
-        }.start();
+        };
+        audioThread.start();
     }
 
     /**
@@ -520,7 +523,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                             try {
                                 ot = socket.getOutputStream();
                                 is = socket.getInputStream();
-                                ot.write(("SLbc83d1d6-1188-46d4-8515-cbc5cacc699b").getBytes());
+                                ot.write(("SL" + ServiceModel.INSTANCE.getToken()).getBytes());
                                 ot.flush();
                                 DataInputStream input = new DataInputStream(is);
                                 byte[] bytes = new byte[10000];
@@ -770,16 +773,15 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
         destroyCamera();
         try {
             socket.close();
-            //socket.shutdownInput();
-            //socket.shutdownOutput();
-
+            isRecording = false;
+            audioThread.interrupt();
+            threadListener.interrupt();
+            mMediaCodec.stop();
+            mMediaCodec.release();
+            mMediaCodec = null;
         } catch (IOException e) {
             e.printStackTrace();
         }
-        threadListener.interrupt();
-        mMediaCodec.stop();
-        mMediaCodec.release();
-        mMediaCodec = null;
     }
 }
 

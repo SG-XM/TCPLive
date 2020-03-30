@@ -48,7 +48,7 @@ import java.util.List;
 
 
 /**
- * @CreadBy ：SGXN
+ * @CreadBy ：SGXM
  * @date 2020/3/17
  */
 public class VideoActivity extends AppCompatActivity implements SurfaceHolder.Callback, View.OnClickListener {

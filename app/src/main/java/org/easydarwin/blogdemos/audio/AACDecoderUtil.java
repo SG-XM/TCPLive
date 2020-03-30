@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
- * @CreadBy ：SGXN
+ * @CreadBy ：SGXM
  * @date 2020/3/17
  */
 public class AACDecoderUtil {

@@ -15,7 +15,7 @@ import android.view.SurfaceView;
 
 
 /**
- * @CreadBy ：SGXN
+ * @CreadBy ：SGXM
  * @date 2020/3/17
  */
 public class VideoSurfaceView extends SurfaceView implements SurfaceHolder.Callback {

@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_home.*
 import org.easydarwin.blogdemos.commons.CommonContext
-import org.easydarwin.blogdemos.room.WatchMovieActivity
+import org.easydarwin.blogdemos.room.RoomActivity
 import org.jetbrains.anko.startActivity
 
 class HomeActivity : AppCompatActivity() {
@@ -16,7 +16,7 @@ class HomeActivity : AppCompatActivity() {
             startActivity<RecordActivity>()
         }
         bt_2watch.setOnClickListener {
-            startActivity<WatchMovieActivity>()
+            startActivity<RoomActivity>()
         }
         CommonContext.registerContext(this)
     }

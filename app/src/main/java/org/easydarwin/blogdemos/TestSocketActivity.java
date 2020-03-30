@@ -43,7 +43,7 @@ import java.util.List;
 
 
 /**
- * @CreadBy ：SGXN
+ * @CreadBy ：SGXM
  * @date 2020/3/17
  */
 public class TestSocketActivity extends AppCompatActivity implements SurfaceHolder.Callback, View.OnClickListener {

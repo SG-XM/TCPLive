@@ -5,7 +5,7 @@ import android.media.AudioTrack;
 import android.util.Log;
 
 /**
- * @CreadBy ：SGXN
+ * @CreadBy ：SGXM
  * @date 2020/3/17
  */
 public class MyAudioTrack {
