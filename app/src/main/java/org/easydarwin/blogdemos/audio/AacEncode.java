@@ -93,7 +93,7 @@ public class AacEncode {
      * @time: 16:19
      **/
     public byte[] offerEncoder(byte[] input) throws Exception {
-        Log.e("offerEncoder", input.length + " is coming");
+        Log.d("offerEncoder", input.length + " is coming");
 
         int inputBufferIndex = mediaCodec.dequeueInputBuffer(-1);//其中需要注意的有dequeueInputBuffer（-1），参数表示需要得到的毫秒数，-1表示一直等，0表示不需要等，传0的话程序不会等待，但是有可能会丢帧。
         if (inputBufferIndex >= 0) {

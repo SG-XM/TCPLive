@@ -342,16 +342,16 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                             outputStream.flush();
                             byte[] temp = new byte[4];
                             System.arraycopy(outData, 0, temp, 0, 4);
-                            Log.e("writeSteam", "正在写入数据长度：" + outData.length + ",前四个字节的值：" + bytesToInt(temp, 0));
+                            Log.d("writeSteam", "正在写入数据长度：" + outData.length + ",前四个字节的值：" + bytesToInt(temp, 0));
                         } else {
-                            Log.e("writeSteam", "发送失败，socket断开了连接");
+                            Log.d("writeSteam", "发送失败，socket断开了连接");
                         }
                     } else {
-                        Log.e("writeSteam", "发送失败，socket关闭");
+                        Log.d("writeSteam", "发送失败，socket关闭");
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
-                    Log.e("writeSteam", "写入数据失败");
+                    Log.d("writeSteam", "写入数据失败");
                 }
             }
         }.start();

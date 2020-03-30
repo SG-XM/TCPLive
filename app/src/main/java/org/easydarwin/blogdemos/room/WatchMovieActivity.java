@@ -386,7 +386,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                         if (AudioRecord.ERROR_INVALID_OPERATION != bufferReadResult) {
                             //转成AAC编码
                             byte[] ret = aacMediaEncode.offerEncoder(buffer);
-                            Log.e("recod", "aac大小：" + ret.length);
+                            Log.d("recod", "aac大小：" + ret.length);
                             writeData(ret, 2);
                         }
                     }
@@ -428,7 +428,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
 ////
 ////                                    }
 ////                                });
-//                                Log.e("writeSteam", "加入头部后写入数据长度：" + headOut.length);
+//                                Log.d("writeSteam", "加入头部后写入数据长度：" + headOut.length);
 //                            }
 //                        } else {
 //                            runOnUiThread(new Runnable() {
@@ -438,7 +438,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
 //
 //                                }
 //                            });
-//                            Log.e("writeSteam", "发送失败，socket断开了连接");
+//                            Log.d("writeSteam", "发送失败，socket断开了连接");
 //                        }
 //                    } else {
 //                        runOnUiThread(new Runnable() {
@@ -447,11 +447,11 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
 //                                Toast.makeText(WatchMovieActivity.this, "发送失败，socket关闭", Toast.LENGTH_SHORT).show();
 //                            }
 //                        });
-//                        Log.e("writeSteam", "发送失败，socket关闭");
+//                        Log.d("writeSteam", "发送失败，socket关闭");
 //                    }
 //                } catch (IOException e) {
 //                    e.printStackTrace();
-//                    Log.e("writeSteam", "写入数据失败");
+//                    Log.d("writeSteam", "写入数据失败");
 //                }
 //            }
 //        }.start();
@@ -469,20 +469,20 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
         }
         byte[] headBytes = new byte[40];
         System.arraycopy(head.getBytes(), 0, headBytes, 0, head.getBytes().length);
-        Log.e("writeSteam", "头部长度：" + headBytes.length);
+        Log.d("writeSteam", "头部长度：" + headBytes.length);
         for (byte b : "start".getBytes()) {
-            Log.e("writeSteam", "头部数据：" + b);
+            Log.d("writeSteam", "头部数据：" + b);
         }
         if (headBytes[0] == 0x73 && headBytes[1] == 0x74 && headBytes[2] == 0x61 && headBytes[3] == 0x72 && headBytes[4] == 0x74) {
-            Log.e("writeSteam", "确认是头部");
+            Log.d("writeSteam", "确认是头部");
         }
         String outHead = new String(headBytes);
-        Log.e("writeSteam", "头部：" + outHead);
+        Log.d("writeSteam", "头部：" + outHead);
         String[] headSplit = outHead.split("&");
         for (String s : headSplit) {
-            Log.e("writeSteam", "截取部分：" + s);
+            Log.d("writeSteam", "截取部分：" + s);
         }
-        Log.e("writeSteam", "加入头部前数据长度：" + out.length);
+        Log.d("writeSteam", "加入头部前数据长度：" + out.length);
         byte[] headByteOut = new byte[out.length + 40];
         //将头部拷入数组
         System.arraycopy(headBytes, 0, headByteOut, 0, headBytes.length);
