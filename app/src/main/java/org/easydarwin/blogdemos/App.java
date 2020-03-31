@@ -11,7 +11,7 @@ public class App extends Application {
 
     private static App sInstance;
 
-    public static final String SERVER_HOST = "172.28.178.245";
+    public static final String SERVER_HOST = "172.28.176.213";
     private Socket socket;
     private final int PORT = 8081;
     private Map<String, Socket> sockets = new HashMap<>();

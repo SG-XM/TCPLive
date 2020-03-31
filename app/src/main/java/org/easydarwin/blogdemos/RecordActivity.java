@@ -94,6 +94,9 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
             ByteBuffer[] inputBuffers = mMediaCodec.getInputBuffers();
             ByteBuffer[] outputBuffers = mMediaCodec.getOutputBuffers();
             byte[] dst = new byte[data.length];
+            if (mCamera == null) {
+                finish();
+            }
             Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
             if (getDgree() == 0) {
                 dst = Util.rotateNV21Degree90(data, previewSize.width, previewSize.height);
@@ -786,6 +789,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
         super.onDestroy();
         destroyCamera();
         try {
+            App.getInstance().removeSocket(SERVER_HOST);
             socket.close();
             isRecording = false;
             audioThread.interrupt();

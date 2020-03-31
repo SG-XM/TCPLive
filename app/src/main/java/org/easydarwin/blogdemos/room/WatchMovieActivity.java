@@ -683,7 +683,16 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                             Log.e("readSteam", "接受失败，socket断开了连接");
                         }
                     } else {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+
+                                Toast.makeText(WatchMovieActivity.this, "socket关闭", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+
                         Log.e("readSteam", "接受失败，socket关闭");
+                        return;
                     }
                 }
             }
@@ -805,9 +814,10 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
         destroyCamera();
         try {
             socket.close();
+            App.getInstance().removeSocket(SERVER_HOST);
             //socket.shutdownInput();
             //socket.shutdownOutput();
-
+            threadListener.interrupt();
         } catch (IOException e) {
             e.printStackTrace();
         }
