@@ -97,6 +97,10 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
             if (mCamera == null) {
                 finish();
             }
+            if (mCamera == null) {
+                // finish();
+                return;
+            }
             Camera.Size previewSize = mCamera.getParameters().getPreviewSize();
             if (getDgree() == 0) {
                 dst = Util.rotateNV21Degree90(data, previewSize.width, previewSize.height);
