@@ -40,6 +40,7 @@ class RoomItem(val bean: RoomBean) : Item {
             holder as ViewHolder
             holder.apply {
                 view.setOnClickListener {
+
                     it.context.startActivity<WatchMovieActivity>("roomId" to item.bean.id)
                 }
                 Glide.with(pic).load(item.bean.cover).into(pic)

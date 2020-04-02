@@ -88,7 +88,7 @@ object TokenInterceptor : Interceptor {
 }
 
 object ServiceFactory {
-    private const val BASE_URL = "http://${App.SERVER_HOST}:8080/"
+    private const val BASE_URL = "http://${App.SERVER_HOST}:4869/"
     //private const val BASE_URL = "http://47.92.141.153/"
     private val loggingInterceptor = HttpLoggingInterceptor()
             .apply { level = HttpLoggingInterceptor.Level.BODY }

@@ -91,12 +91,13 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
         public void onPreviewFrame(byte[] data, Camera camera) {
             if (!isRecording && mCamera != null) {
                 mCamera.setPreviewCallback(null);
+                return;
             }
             if (data == null) {
                 return;
             }
 
-            if (ifKeyFrame % 1000 == 0 && Build.VERSION.SDK_INT >= 23) {
+            if (ifKeyFrame % 100 == 0 && Build.VERSION.SDK_INT >= 23) {
                 YuvImage image = new YuvImage(data, ImageFormat.NV21, width, height, null);
                 //ImageFormat.NV21  640 480
                 ByteArrayOutputStream outputSteam = new ByteArrayOutputStream();
@@ -724,6 +725,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
      * 停止预览
      */
     public synchronized void stopPreview() {
+        isRecording = false;
         if (mCamera != null) {
 //            mCamera.stopPreview();
 //            mCamera.setPreviewCallbackWithBuffer(null);
@@ -822,11 +824,14 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
             App.getInstance().removeSocket(SERVER_HOST);
             socket.close();
             isRecording = false;
-            audioThread.interrupt();
-            threadListener.interrupt();
+            if (audioThread != null)
+                audioThread.interrupt();
+            if (threadListener != null)
+                threadListener.interrupt();
             mMediaCodec.stop();
             mMediaCodec.release();
             mMediaCodec = null;
+            started = false;
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -6,13 +6,16 @@
     android:orientation="vertical">
 
     <RelativeLayout
+        app:layout_constraintBottom_toTopOf="parent"
         android:layout_width="match_parent"
+
         android:layout_height="30dp">
 
 
         <SurfaceView
             android:id="@+id/sv_surfaceview"
             android:layout_width="match_parent"
+
             android:layout_height="match_parent" />
 
         <Button

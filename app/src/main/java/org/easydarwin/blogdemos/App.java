@@ -10,8 +10,7 @@ import java.util.Map;
 public class App extends Application {
 
     private static App sInstance;
-
-    public static final String SERVER_HOST = "172.28.178.180";
+    public static final String SERVER_HOST = "47.101.33.252";
     private Socket socket;
     private final int PORT = 8081;
     private Map<String, Socket> sockets = new HashMap<>();
@@ -54,5 +53,4 @@ public class App extends Application {
         super.onCreate();
         sInstance = this;
     }
-
 }
