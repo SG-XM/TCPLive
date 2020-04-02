@@ -3,7 +3,11 @@ package org.easydarwin.blogdemos;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
+import android.graphics.Rect;
+import android.graphics.YuvImage;
 import android.hardware.Camera;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -38,6 +42,7 @@ import org.easydarwin.blogdemos.room.WatchMovieActivity;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -48,6 +53,10 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
+
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 
 import static org.easydarwin.blogdemos.App.SERVER_HOST;
 
@@ -80,8 +89,25 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
 
         @Override
         public void onPreviewFrame(byte[] data, Camera camera) {
+            if (!isRecording && mCamera != null) {
+                mCamera.setPreviewCallback(null);
+            }
             if (data == null) {
                 return;
+            }
+
+            if (ifKeyFrame % 1000 == 0 && Build.VERSION.SDK_INT >= 23) {
+                YuvImage image = new YuvImage(data, ImageFormat.NV21, width, height, null);
+                //ImageFormat.NV21  640 480
+                ByteArrayOutputStream outputSteam = new ByteArrayOutputStream();
+                image.compressToJpeg(new Rect(0, 0, image.getWidth(), image.getHeight()), 70, outputSteam); // 将NV21格式图片，以质量70压缩成Jpeg，并得到JPEG数据流
+                byte[] jpegData = outputSteam.toByteArray();                                                //从outputSteam得到byte数据
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inSampleSize = 1;
+                Bitmap bmp = BitmapFactory.decodeByteArray(jpegData, 0, jpegData.length, options);
+                bmp.getDensity();
+                MultipartBody.Part body = MultipartBody.Part.createFormData("file", String.valueOf(System.currentTimeMillis()), RequestBody.create(MediaType.parse("image/jpeg"), jpegData));
+                ServiceModel.INSTANCE.cover(body);
             }
             ifKeyFrame++;
             if (ifKeyFrame % 10 == 0 && Build.VERSION.SDK_INT >= 23) {

@@ -26,7 +26,7 @@ class RoomItem(val bean: RoomBean) : Item {
     }
 
     override fun areContentsTheSame(newItem: Item): Boolean {
-        return (newItem as? RoomItem)?.bean?.id == this.bean.id
+        return (newItem as? RoomItem)?.bean?.id == this.bean.id && (newItem as? RoomItem)?.bean?.cover == this.bean.cover
     }
 
     companion object : ItemController {
@@ -44,7 +44,7 @@ class RoomItem(val bean: RoomBean) : Item {
                 }
                 Glide.with(pic).load(item.bean.cover).into(pic)
                 roomId.text = "房间号:${item.bean.id}"
-                info.text = "用户名:${item.bean.user.username}    在线人数:${item.bean.onlineUserCount}"
+                info.text = "用户名:${item.bean.user.username}\n在线人数:${item.bean.onlineUserCount}"
             }
         }
 

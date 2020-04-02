@@ -1,6 +1,7 @@
 package org.easydarwin.blogdemos.network
 
 import android.arch.lifecycle.MutableLiveData
+import android.util.Log
 import com.twt.zq.commons.common.CommonBody
 import com.twt.zq.commons.common.ServiceFactory
 import com.twt.zq.commons.common.dealOrNull
@@ -10,6 +11,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import okhttp3.MultipartBody
 import org.easydarwin.blogdemos.HomeActivity
 import org.easydarwin.blogdemos.commons.CommonContext
 import org.jetbrains.anko.startActivity
@@ -31,6 +33,10 @@ interface ServiceAPI {
     fun room(): Deferred<CommonBody<MutableList<RoomBean>>>
 
 
+    @POST("/room/cover")
+    @Multipart
+    fun cover(@Part file: MultipartBody.Part): Deferred<CommonBody<MutableList<RoomBean>>>
+
     companion object : ServiceAPI by ServiceFactory()
 }
 
@@ -43,6 +49,14 @@ object ServiceModel {
                 toast("登录成功")
                 token = it!!.access_token!!
                 CommonContext.application.startActivity<HomeActivity>()
+            }
+        }
+    }
+
+    fun cover(file: MultipartBody.Part) {
+        GlobalScope.launch(Dispatchers.Main + coroutineHandler) {
+            ServiceAPI.cover(file).await().dealOrNull {
+                Log.e("woggle", "sss")
             }
         }
     }

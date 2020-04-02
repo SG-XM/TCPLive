@@ -37,7 +37,7 @@ class LoginActivity : AppCompatActivity() {
         bt_login.setOnClickListener {
 
 
-            // CommonContext.application.startActivity<HomeActivity>()
+            //CommonContext.application.startActivity<HomeActivity>()
             //finish()
             if (code_input.text.isEmpty()) {
                 toast("请输入验证码")
