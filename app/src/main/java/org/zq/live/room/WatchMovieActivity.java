@@ -25,6 +25,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONException;
@@ -81,13 +82,45 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
 
     // 记录是否正在进行录制
     private boolean isRecording = false;
+    private boolean isShowFrame = false;
     //录制音频参数
     private int frequence = 44100; //录制频率，单位hz.这里的值注意了，写的不好，可能实例化AudioRecord对象的时候，会出错。我开始写成11025就不行。这取决于硬件设备
     private int channelConfig = AudioFormat.CHANNEL_IN_MONO;
     private int audioEncoding = AudioFormat.ENCODING_PCM_16BIT;
-
+    private int frameNum = 0;
+    private TextView fameNum;
     private byte[] last;
-
+    private Handler handler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            switch (msg.what) {
+                case 1:
+                    Toast.makeText(WatchMovieActivity.this, "开启直播失败", Toast.LENGTH_SHORT).show();
+                    break;
+                case 2:
+                    Toast.makeText(WatchMovieActivity.this, "连接服务器失败", Toast.LENGTH_SHORT).show();
+                    break;
+                case 3:
+                    if (!started) {
+                        isShowFrame = true;
+                        postDelayed(runnable, 1000L);
+                        startPreview();
+                        //startRecord();
+                    } else {
+                        stopPreview();
+                        //threadListener.interrupt();
+                    }
+                    break;
+                case 4:
+                    Toast.makeText(WatchMovieActivity.this, "socket关闭了连接", Toast.LENGTH_SHORT).show();
+                    break;
+                case 5:
+                    Toast.makeText(WatchMovieActivity.this, "socket断开了连接", Toast.LENGTH_SHORT).show();
+                    break;
+            }
+        }
+    };
     Camera.PreviewCallback previewCallback = new Camera.PreviewCallback() {
         byte[] mPpsSps = new byte[0];
 
@@ -152,32 +185,13 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
 
     };
     private Thread threadListener;
-    private Handler handler = new Handler() {
+    private Runnable runnable = new Runnable() {
         @Override
-        public void handleMessage(Message msg) {
-            super.handleMessage(msg);
-            switch (msg.what) {
-                case 1:
-                    Toast.makeText(WatchMovieActivity.this, "开启直播失败", Toast.LENGTH_SHORT).show();
-                    break;
-                case 2:
-                    Toast.makeText(WatchMovieActivity.this, "连接服务器失败", Toast.LENGTH_SHORT).show();
-                    break;
-                case 3:
-                    if (!started) {
-                        startPreview();
-                        //startRecord();
-                    } else {
-                        stopPreview();
-                        //threadListener.interrupt();
-                    }
-                    break;
-                case 4:
-                    Toast.makeText(WatchMovieActivity.this, "socket关闭了连接", Toast.LENGTH_SHORT).show();
-                    break;
-                case 5:
-                    Toast.makeText(WatchMovieActivity.this, "socket断开了连接", Toast.LENGTH_SHORT).show();
-                    break;
+        public void run() {
+            fameNum.setText("" + frameNum + "fps");
+            frameNum = 0;
+            if (isShowFrame) {
+                handler.postDelayed(runnable, 1000L);
             }
         }
     };
@@ -265,7 +279,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_watch);
         roomId = getIntent().getIntExtra("roomId", 0);
-
+        fameNum = (TextView) findViewById(R.id.tv_wfameNum);
         btnSwitch = (Button) findViewById(R.id.btn_switch);
         btnSwitch.setOnClickListener(this);
         initMediaCodec();
@@ -643,6 +657,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
                                                         byte[] frameBy = new byte[frameLength];
                                                         System.arraycopy(addByte, i + 40, frameBy, 0, frameBy.length);
                                                         if (type.equals("video")) {
+                                                            frameNum++;
                                                             mPlayer.decodeH264(frameBy);
                                                         } else if (type.equals("music")) {
                                                             Log.e("woggle", "shou");
@@ -812,6 +827,7 @@ public class WatchMovieActivity extends AppCompatActivity implements SurfaceHold
     protected void onDestroy() {
         super.onDestroy();
         destroyCamera();
+        isShowFrame = false;
         try {
             socket.close();
             App.getInstance().removeSocket(SERVER_HOST);

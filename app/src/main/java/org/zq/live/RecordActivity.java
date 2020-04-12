@@ -31,6 +31,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONException;
@@ -84,6 +85,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
     private Thread audioThread;
     private SurfaceView video_play;
     private AvcDecode mPlayer = null;
+    private int frameNum = 0;
     Camera.PreviewCallback previewCallback = new Camera.PreviewCallback() {
         byte[] mPpsSps = new byte[0];
 
@@ -96,7 +98,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
             if (data == null) {
                 return;
             }
-
+            frameNum++;
             if (ifKeyFrame % 100 == 0 && Build.VERSION.SDK_INT >= 23) {
                 YuvImage image = new YuvImage(data, ImageFormat.NV21, width, height, null);
                 //ImageFormat.NV21  640 480
@@ -182,6 +184,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
         }
 
     };
+    private TextView fameNum;
     private int ifKeyFrame = 0;
 
     // 输出流对象
@@ -195,7 +198,6 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
     private int audioEncoding = AudioFormat.ENCODING_PCM_16BIT;
 
     private byte[] last;
-
     private Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -209,6 +211,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                     break;
                 case 3:
                     if (!started) {
+                        postDelayed(runnable, 1000L);
                         startPreview();
                         startRecord();
                     } else {
@@ -222,6 +225,16 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
                 case 5:
                     Toast.makeText(RecordActivity.this, "socket断开了连接", Toast.LENGTH_SHORT).show();
                     break;
+            }
+        }
+    };
+    private Runnable runnable = new Runnable() {
+        @Override
+        public void run() {
+            fameNum.setText("" + frameNum + "fps");
+            frameNum = 0;
+            if (isRecording) {
+                handler.postDelayed(runnable, 1000L);
             }
         }
     };
@@ -242,6 +255,7 @@ public class RecordActivity extends AppCompatActivity implements SurfaceHolder.C
         btnSwitch.setOnClickListener(this);
         initMediaCodec();
         surfaceView = (SurfaceView) findViewById(R.id.sv_surfaceview);
+        fameNum = (TextView) findViewById(R.id.tv_fameNum);
         video_play = (SurfaceView) findViewById(R.id.video_play);
         surfaceView.getHolder().addCallback(this);
         surfaceView.getHolder().setFixedSize(getResources().getDisplayMetrics().widthPixels,
