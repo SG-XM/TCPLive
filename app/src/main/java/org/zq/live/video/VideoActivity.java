@@ -1,10 +1,4 @@
-/*
-	Copyright (c) 2013-2016 EasyDarwin.ORG.  All rights reserved.
-	Github: https://github.com/EasyDarwin
-	WEChat: EasyDarwin
-	Website: http://www.easydarwin.org
-*/
-package org.zq.live;
+package org.zq.live.video;
 
 import android.Manifest;
 import android.content.Intent;
@@ -31,8 +25,13 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 
+import org.zq.live.App;
+import org.zq.live.AvcDecode;
+import org.zq.live.R;
+import org.zq.live.Util;
 import org.zq.live.hw.EncoderDebugger;
 import org.zq.live.hw.NV21Convertor;
+import org.zq.live.room.WatchMovieActivity;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -45,17 +44,14 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
-
-import static android.R.attr.data;
 
 
 /**
  * @CreadBy ：SGXM
  * @date 2020/3/17
  */
-public class MainActivity extends AppCompatActivity implements SurfaceHolder.Callback, View.OnClickListener {
+public class VideoActivity extends AppCompatActivity implements SurfaceHolder.Callback, View.OnClickListener {
 
     String path = Environment.getExternalStorageDirectory() + "/vv831.h264";
 
@@ -80,10 +76,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             super.handleMessage(msg);
             switch (msg.what) {
                 case 1:
-                    Toast.makeText(MainActivity.this, "开启直播失败", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(VideoActivity.this, "开启直播失败", Toast.LENGTH_SHORT).show();
                     break;
                 case 2:
-                    Toast.makeText(MainActivity.this, "连接服务器失败", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(VideoActivity.this, "连接服务器失败", Toast.LENGTH_SHORT).show();
                     break;
                 case 3:
                     if (!started) {
@@ -93,15 +89,16 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                     }
                     break;
                 case 4:
-                    Toast.makeText(MainActivity.this, "socket关闭了连接", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(VideoActivity.this, "socket关闭了连接", Toast.LENGTH_SHORT).show();
                     break;
                 case 5:
-                    Toast.makeText(MainActivity.this, "socket断开了连接", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(VideoActivity.this, "socket断开了连接", Toast.LENGTH_SHORT).show();
                     break;
             }
         }
     };
     private Thread threadListener;
+    private byte[] last;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,7 +109,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         btnSwitch.setOnClickListener(this);
         initMediaCodec();
         surfaceView = (SurfaceView) findViewById(R.id.sv_surfaceview);
-        video_play = (SurfaceView) findViewById(R.id.video_play);
         surfaceView.getHolder().addCallback(this);
         surfaceView.getHolder().setFixedSize(getResources().getDisplayMetrics().widthPixels,
                 getResources().getDisplayMetrics().heightPixels);
@@ -224,6 +220,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             displayRotation = (cameraRotationOffset - getDgree() + 360) % 360;
             mCamera.setDisplayOrientation(displayRotation);
             mCamera.setPreviewDisplay(surfaceHolder);
+
             return true;
         } catch (Exception e) {
             StringWriter sw = new StringWriter();
@@ -332,17 +329,14 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 try {
                     if (!socket.isClosed()) {
                         if (socket.isConnected()) {
-                            // 步骤1：从Socket 获得输出流对象OutputStream
-                            // 该对象作用：发送数据
                             outputStream = socket.getOutputStream();
-                            // 步骤2：写入需要发送的数据到输出流对象中
+                            //给每一帧加一个自定义的头
+
                             outputStream.write(outData);
-                            // 特别注意：数据的结尾加上换行符才可让服务器端的readline()停止阻塞
-                            // 步骤3：发送数据到服务端
                             outputStream.flush();
                             byte[] temp = new byte[4];
                             System.arraycopy(outData, 0, temp, 0, 4);
-                            Log.d("writeSteam", "正在写入数据长度：" + outData.length + ",前四个字节的值：" + bytesToInt(temp, 0));
+                            Log.d("writeSteam", "正在写入数据长度：" + outData.length);
                         } else {
                             Log.d("writeSteam", "发送失败，socket断开了连接");
                         }
@@ -357,9 +351,13 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         }.start();
     }
 
-    private List<Byte> byteList = new ArrayList<>();
-    private List<Integer> index = new ArrayList<>();
-    private int flag = 0;
+    //保存每次返回来的数据
+    private List<byte[]> frameList = new ArrayList<>();
+    //根据实际情况调整一帧的大小
+    private int FRAME_MAX_LEN = 500*1024;
+    //这个值用于找到第一个帧头后，继续寻找第二个帧头，如果解码失败可以尝试缩小这个值
+    private int FRAME_MIN_LEN = 6;
+
 
     private void startSocketListener() {
         byte[] head = {0x00, 0x00, 0x00, 0x01};
@@ -369,6 +367,8 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             @Override
             public void run() {
                 super.run();
+                //开始时间
+                long startTime = System.currentTimeMillis();
                 while (true) {
                     if (!socket.isClosed()) {
                         if (socket.isConnected()) {
@@ -382,53 +382,65 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                                     byte[] out = new byte[le];
                                     System.arraycopy(bytes, 0, out, 0, out.length);
                                     Util.save(out, 0, out.length, path, true);
-                                    Log.e("readSteam", "接收的数据长度："  +out.length);
+                                    Log.e("readSteam", "接收的数据长度：------------------------"  +out.length);
                                     if (le != -1) {
-
-                                        for (Byte b:byteList){
-                                            Log.e("after","上次剩余数据："+b.byteValue());
-                                        }
-                                        for (byte data : out) {
-                                            byteList.add(data);
-                                            Log.e("tag","正在录入数据："+data);
-                                            for (Byte b:byteList){
-                                                Log.e("tagfter","录入之后的新数据："+b.byteValue());
+                                        byte[] addByte = new byte[out.length];
+                                        if (last!=null){
+                                            if (last.length!=0){
+                                                for (byte b: last){
+                                                    Log.e("last", "-剩余数据##########################"  +b);
+                                                }
+                                                //将上次结余的数据拼接在新来数据前面
+                                                addByte = new byte[out.length+last.length];
+                                                System.arraycopy(last, 0, addByte, 0,  last.length);
+                                                System.arraycopy(out, 0, addByte, last.length,  out.length);
+                                                for (byte b: addByte){
+                                                    Log.e("addByte", "-合并的数据++++++++++++++++++++++"  +b);
+                                                }
+                                            }
+                                        }else {
+                                            addByte = new byte[out.length];
+                                            System.arraycopy(out, 0, addByte, 0,  out.length);
+                                            for (byte b: addByte){
+                                                Log.e("addByte", "合并的数据++++++++++++++++++++++"  +b);
                                             }
                                         }
-                                        for (int i = 0; i < byteList.size(); i++) {
-                                            if (i + 3 <= out.length) {
-                                                if (byteList.get(i).byteValue() == 0x00 && byteList.get(i + 1).byteValue() == 0x00 && byteList.get(i + 2).byteValue() == 0x00 && byteList.get(i + 3).byteValue() == 0x01) {
+
+                                        List<Integer> index = new ArrayList<>();
+                                        for (int i=0;i<addByte.length;i++){
+                                            Log.e("readSteam", "接收的数据"  +addByte[i]);
+                                            if (i+3<=addByte.length){
+                                                if (isHead(addByte,i)){
                                                     index.add(i);
                                                 }
                                             }
                                         }
-                                        Log.e("index","index="+index.size());
+
+                                        Log.e("readsize", "头文的数量=============================="  +index.size());
                                         if (index.size()>=2){
-                                            //截取其中的一帧
-                                            byte[] frameBy = new byte[index.get(1)-index.get(0)];
-                                            int a = 0;
-                                            for (int i = index.get(0); i <=index.get(1)-1; i++) {
-                                                frameBy[a] = byteList.get(i).byteValue();
-                                                ++a;
+                                            for (int a=0;a<index.size();a++){
+                                                if (a+1<index.size()){
+                                                    byte[] frameBy = new byte[index.get(a+1)-index.get(a)];
+                                                    System.arraycopy(addByte, index.get(a), frameBy, 0,  frameBy.length);
+                                                    Log.e("readcodec", "一帧数据长度：******************"  +frameBy.length);
+                                                    mPlayer.decodeH264(frameBy);
+//                                                    frameList.add(frameBy);
+                                                }else {
+                                                    //变成结余数据
+                                                    last = new byte[addByte.length-index.get(index.size()-1)];
+                                                    System.arraycopy(addByte, index.get(index.size()-1), last, 0,  addByte.length-index.get(index.size()-1));
+                                                }
                                             }
-                                            //传给H264解码器
-                                            for (byte b:frameBy){
-                                                Log.e("indecode","传入解码的数据："+b);
-                                            }
-                                            if (frameBy.length!=0){
-                                                mPlayer.decodeH264(frameBy);
-                                            }
-                                            Log.e("tag","frameBy的长度："+frameBy.length);
-                                            //从集合中删除上一帧之前的数据
-                                            for (int i = index.get(1)-1; i >=0; i--) {
-                                                byteList.remove(i);
-                                            }
-                                            for (Byte b:byteList){
-                                                Log.e("after","删除之后的剩余数据："+b.byteValue());
-                                            }
-                                            index.clear();
+                                        }else {
+                                            //直接变成结余的
+                                            last = new byte[addByte.length];
+                                            System.arraycopy(addByte, 0, last, 0,  addByte.length);
                                         }
                                     }
+                                    //线程休眠
+                                    sleepThread(startTime, System.currentTimeMillis());
+                                    //重置开始时间
+                                    startTime = System.currentTimeMillis();
                                 }
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -446,20 +458,150 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         threadListener.start();
     }
 
-    public byte[] subBytes(byte[] src, int begin, int count) {
-        byte[] bs = new byte[count];
-        for (int i = begin; i < begin + count; i++) bs[i - begin] = src[i];
-        return bs;
+    private void playH264(){
+        new Thread(){
+            @Override
+            public void run() {
+                super.run();
+                while (true){
+                    Log.e("start","-------------缓冲区大小："+frameList.size());
+                    if (frameList.size()>5){
+                        for (int i=0;i<frameList.size();i++){
+                            Log.e("start","-------------开始播放");
+                            mPlayer.decodeH264(frameList.get(i));
+                            frameList.remove(i);
+                        }
+                    }
+                }
+            }
+        }.start();
     }
 
-    public static int bytesToInt(byte[] src, int offset) {
-        int value;
-        value = (int) ((src[offset] & 0xFF)
-                | ((src[offset + 1] & 0xFF) << 8)
-                | ((src[offset + 2] & 0xFF) << 16)
-                | ((src[offset + 3] & 0xFF) << 24));
-        return value;
+
+    private void startPlay(){
+        new Thread(){
+            @Override
+            public void run() {
+                super.run();
+                //循环从队列中读取数据
+                while (true){
+                    if (frameList.size()!=0){
+                        //保存完整数据帧
+                        byte[] frame = new byte[FRAME_MAX_LEN];
+                        //当前帧长度
+                        int frameLen = 0;
+                        //开始时间
+                        long startTime = System.currentTimeMillis();
+                        //每次从消息队列读取的数据,返回第一个元素，并且在队列中删除
+                        byte[] readData = frameList.get(0);
+                        //当前长度小于最大值
+                        if (frameLen + readData.length< FRAME_MAX_LEN){
+                            //将readData拷贝到frame
+                            System.arraycopy(readData, 0, frame, frameLen,  readData.length);
+                            //修改frameLen
+                            frameLen += readData.length;
+                            //寻找第一个帧头
+                            int headFirstIndex = findHead(frame, 0, frameLen);
+                            while (headFirstIndex >= 0 && isHead(frame, headFirstIndex)) {
+                                //寻找第二个帧头
+                                int headSecondIndex = findHead(frame, headFirstIndex + FRAME_MIN_LEN, frameLen);
+                                //如果第二个帧头存在，则两个帧头之间的就是一帧完整的数据
+                                if (headSecondIndex > 0 && isHead(frame, headSecondIndex)) {
+                                    mPlayer.decodeH264(frame);
+                                    for (byte b:frame){
+                                        Log.e("codec", "正在解码数据：" + b );
+                                    }
+                                    //截取headSecondIndex之后到frame的有效数据,并放到frame最前面
+                                    byte[] temp = Arrays.copyOfRange(frame, headSecondIndex, frameLen);
+                                    System.arraycopy(temp, 0, frame, 0, temp.length);
+                                    //修改frameLen的值
+                                    frameLen = temp.length;
+                                    //线程休眠
+                                    sleepThread(startTime, System.currentTimeMillis());
+                                    //重置开始时间
+                                    startTime = System.currentTimeMillis();
+                                    //继续寻找数据帧
+                                    headFirstIndex = findHead(frame, 0, frameLen);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }.start();
     }
+
+    /**
+     * 寻找指定buffer中h264头的开始位置
+     *
+     * @param data   数据
+     * @param offset 偏移量
+     * @param max    需要检测的最大值
+     * @return h264头的开始位置 ,-1表示未发现
+     */
+    private int findHead(byte[] data, int offset, int max) {
+        int i;
+        for (i = offset; i <= max; i++) {
+            //发现帧头
+            if (isHead(data, i))
+                break;
+        }
+        //检测到最大值，未发现帧头
+        if (i == max) {
+            i = -1;
+        }
+        return i;
+    }
+
+    /**
+     * 判断是否是I帧/P帧头:
+     * 00 00 00 01 65    (I帧)
+     * 00 00 00 01 61 / 41   (P帧)
+     *
+     * @param data
+     * @param offset
+     * @return 是否是帧头
+     */
+    private boolean isHead(byte[] data, int offset) {
+        boolean result = false;
+        // 00 00 00 01
+        if (data[offset] == 0x00 && data[offset + 1] == 0x00
+                && data[offset + 2] == 0x00 && data[3] == 0x01 ) {
+            result = true;
+        }
+       /* // 00 00 01
+        if (data[offset] == 0x00 && data[offset + 1] == 0x00
+                && data[offset + 2] == 0x01 && isVideoFrameHeadType(data[offset + 3])) {
+            result = true;
+        }*/
+        return result;
+    }
+
+    /**
+     * I帧或者P帧
+     */
+    private boolean isVideoFrameHeadType(byte head) {
+        return head == (byte) 0x65 || head == (byte) 0x61 || head == (byte) 0x41;
+    }
+
+
+    //根据帧率获取的解码每帧需要休眠的时间,根据实际帧率进行操作
+    private int PRE_FRAME_TIME = 1000 / 25;
+
+    //修眠
+    private void sleepThread(long startTime, long endTime) {
+        //根据读文件和解码耗时，计算需要休眠的时间
+        long time = PRE_FRAME_TIME - (endTime - startTime);
+        if (time > 0) {
+            try {
+                Thread.sleep(time);
+                Log.e("tag","休眠了："+time);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 
     /**
      * 开启预览
@@ -478,6 +620,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             btnSwitch.setText("停止");
             mPlayer = new AvcDecode(width, height, video_play.getHolder().getSurface());
             startSocketListener();
+//            playH264();
         }
     }
 

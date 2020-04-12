@@ -1,9 +1,3 @@
-/*
-	Copyright (c) 2013-2016 EasyDarwin.ORG.  All rights reserved.
-	Github: https://github.com/EasyDarwin
-	WEChat: EasyDarwin
-	Website: http://www.easydarwin.org
-*/
 package org.zq.live;
 
 import android.Manifest;
@@ -33,6 +27,7 @@ import android.widget.Toast;
 
 import org.zq.live.hw.EncoderDebugger;
 import org.zq.live.hw.NV21Convertor;
+import org.zq.live.room.WatchMovieActivity;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -43,19 +38,15 @@ import java.io.StringWriter;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
-
-import static android.R.attr.data;
 
 
 /**
  * @CreadBy ：SGXM
  * @date 2020/3/17
  */
-public class MainActivity extends AppCompatActivity implements SurfaceHolder.Callback, View.OnClickListener {
+public class TestSocketActivity extends AppCompatActivity implements SurfaceHolder.Callback, View.OnClickListener {
 
     String path = Environment.getExternalStorageDirectory() + "/vv831.h264";
 
@@ -80,10 +71,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             super.handleMessage(msg);
             switch (msg.what) {
                 case 1:
-                    Toast.makeText(MainActivity.this, "开启直播失败", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(TestSocketActivity.this, "开启直播失败", Toast.LENGTH_SHORT).show();
                     break;
                 case 2:
-                    Toast.makeText(MainActivity.this, "连接服务器失败", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(TestSocketActivity.this, "连接服务器失败", Toast.LENGTH_SHORT).show();
                     break;
                 case 3:
                     if (!started) {
@@ -93,10 +84,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                     }
                     break;
                 case 4:
-                    Toast.makeText(MainActivity.this, "socket关闭了连接", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(TestSocketActivity.this, "socket关闭了连接", Toast.LENGTH_SHORT).show();
                     break;
                 case 5:
-                    Toast.makeText(MainActivity.this, "socket断开了连接", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(TestSocketActivity.this, "socket断开了连接", Toast.LENGTH_SHORT).show();
                     break;
             }
         }
@@ -112,7 +103,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         btnSwitch.setOnClickListener(this);
         initMediaCodec();
         surfaceView = (SurfaceView) findViewById(R.id.sv_surfaceview);
-        video_play = (SurfaceView) findViewById(R.id.video_play);
         surfaceView.getHolder().addCallback(this);
         surfaceView.getHolder().setFixedSize(getResources().getDisplayMetrics().widthPixels,
                 getResources().getDisplayMetrics().heightPixels);
@@ -384,17 +374,17 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                                     Util.save(out, 0, out.length, path, true);
                                     Log.e("readSteam", "接收的数据长度："  +out.length);
                                     if (le != -1) {
-
                                         for (Byte b:byteList){
                                             Log.e("after","上次剩余数据："+b.byteValue());
                                         }
                                         for (byte data : out) {
                                             byteList.add(data);
                                             Log.e("tag","正在录入数据："+data);
-                                            for (Byte b:byteList){
-                                                Log.e("tagfter","录入之后的新数据："+b.byteValue());
-                                            }
                                         }
+                                        for (Byte b:byteList){
+                                            Log.e("tagfter","录入之后的新数据："+b.byteValue()+", 长度："+byteList.size());
+                                        }
+                                        Log.e("tag","out："+out.length+", byteList："+byteList.size());
                                         for (int i = 0; i < byteList.size(); i++) {
                                             if (i + 3 <= out.length) {
                                                 if (byteList.get(i).byteValue() == 0x00 && byteList.get(i + 1).byteValue() == 0x00 && byteList.get(i + 2).byteValue() == 0x00 && byteList.get(i + 3).byteValue() == 0x01) {
@@ -404,12 +394,13 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                                         }
                                         Log.e("index","index="+index.size());
                                         if (index.size()>=2){
+
                                             //截取其中的一帧
                                             byte[] frameBy = new byte[index.get(1)-index.get(0)];
                                             int a = 0;
                                             for (int i = index.get(0); i <=index.get(1)-1; i++) {
                                                 frameBy[a] = byteList.get(i).byteValue();
-                                                ++a;
+                                                a++;
                                             }
                                             //传给H264解码器
                                             for (byte b:frameBy){
@@ -427,6 +418,8 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                                                 Log.e("after","删除之后的剩余数据："+b.byteValue());
                                             }
                                             index.clear();
+                                        }else {
+
                                         }
                                     }
                                 }
@@ -444,6 +437,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             }
         };
         threadListener.start();
+    }
+
+    private synchronized void getFreame(int le,byte[] out){
+
     }
 
     public byte[] subBytes(byte[] src, int begin, int count) {

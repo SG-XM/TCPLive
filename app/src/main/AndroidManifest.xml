@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="org.easydarwin.blogdemos">
+    package="org.zq.live">
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
@@ -12,31 +12,32 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
-        android:name=".App"
+        android:name="org.zq.live.App"
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher_c"
+        android:label="TCPLive"
+        android:roundIcon="@mipmap/ic_launcher_c"
         android:networkSecurityConfig="@xml/network_config"
         android:supportsRtl="true"
         android:theme="@style/Theme.Design.NoActionBar">
-        <activity android:name=".room.RoomActivity"></activity>
-        <activity android:name=".auth.LoginActivity">
+        <activity android:name="org.zq.live.room.RoomActivity"></activity>
+        <activity android:name="org.zq.live.auth.LoginActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".HomeActivity"></activity>
+        <activity android:name="org.zq.live.HomeActivity"></activity>
         <activity
-            android:name=".RecordActivity"
+            android:name="org.zq.live.RecordActivity"
             android:screenOrientation="landscape" />
-        <activity android:name=".MainActivity" />
-        <activity android:name=".video.VideoActivity" />
+        <activity android:name="org.zq.live.MainActivity" />
+        <activity android:name="org.zq.live.video.VideoActivity" />
         <activity
-            android:name=".room.WatchMovieActivity"
+            android:name="org.zq.live.room.WatchMovieActivity"
             android:screenOrientation="landscape" />
-        <activity android:name=".audio.AudioTestActivity" />
+        <activity android:name="org.zq.live.audio.AudioTestActivity" />
     </application>
 
 </manifest>

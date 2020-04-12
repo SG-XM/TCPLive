@@ -1,9 +1,3 @@
-/*
-	Copyright (c) 2013-2016 EasyDarwin.ORG.  All rights reserved.
-	Github: https://github.com/EasyDarwin
-	WEChat: EasyDarwin
-	Website: http://www.easydarwin.org
-*/
 package org.zq.live;
 
 import android.Manifest;
@@ -11,8 +5,11 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
+import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -31,8 +28,10 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 
+import org.zq.live.audio.AacEncode;
 import org.zq.live.hw.EncoderDebugger;
 import org.zq.live.hw.NV21Convertor;
+import org.zq.live.room.WatchMovieActivity;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -42,13 +41,10 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 
-import static android.R.attr.data;
+import static org.zq.live.App.SERVER_HOST;
 
 
 /**
@@ -74,6 +70,19 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     private SurfaceView video_play;
     private AvcDecode mPlayer = null;
 
+
+    // 输出流对象
+    OutputStream outputStream;
+
+    // 记录是否正在进行录制
+    private boolean isRecording = false;
+    //录制音频参数
+    private int frequence = 44100; //录制频率，单位hz.这里的值注意了，写的不好，可能实例化AudioRecord对象的时候，会出错。我开始写成11025就不行。这取决于硬件设备
+    private int channelConfig = AudioFormat.CHANNEL_IN_MONO;
+    private int audioEncoding = AudioFormat.ENCODING_PCM_16BIT;
+
+    private byte[] last;
+
     private Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -88,8 +97,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 case 3:
                     if (!started) {
                         startPreview();
+                        startRecord();
                     } else {
                         stopPreview();
+                        threadListener.interrupt();
                     }
                     break;
                 case 4:
@@ -224,6 +235,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             displayRotation = (cameraRotationOffset - getDgree() + 360) % 360;
             mCamera.setDisplayOrientation(displayRotation);
             mCamera.setPreviewDisplay(surfaceHolder);
+
             return true;
         } catch (Exception e) {
             StringWriter sw = new StringWriter();
@@ -296,7 +308,8 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                             outData = iframeData;
                         }
                         //  将数据用socket传输
-                        writeData(outData);
+                        writeData(outData, 1);
+//                        mPlayer.decodeH264(outData);
                         mMediaCodec.releaseOutputBuffer(outputBufferIndex, false);
                         outputBufferIndex = mMediaCodec.dequeueOutputBuffer(bufferInfo, 0);
                     }
@@ -317,36 +330,97 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
     };
 
-    // 输出流对象
-    OutputStream outputStream;
+    private void codeCYuv(byte[] data) {
+
+    }
+
+    /**
+     * 开始录音
+     */
+    private void startRecord() {
+        isRecording = true;
+        new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                try {
+                    //根据定义好的几个配置，来获取合适的缓冲大小
+                    int bufferSize = AudioRecord.getMinBufferSize(frequence, channelConfig, audioEncoding);
+                    //实例化AudioRecord
+                    AudioRecord record = new AudioRecord(MediaRecorder.AudioSource.MIC, frequence, channelConfig, audioEncoding, bufferSize);
+                    //开始录制
+                    record.startRecording();
+                    AacEncode aacMediaEncode = new AacEncode();
+                    //定义缓冲
+                    byte[] buffer = new byte[bufferSize];
+                    //定义循环，根据isRecording的值来判断是否继续录制
+                    while (isRecording) {
+                        //从bufferSize中读取字节。
+                        int bufferReadResult = record.read(buffer, 0, bufferSize);
+                        //获取字节流
+                        if (AudioRecord.ERROR_INVALID_OPERATION != bufferReadResult) {
+                            //转成AAC编码
+                            byte[] ret = aacMediaEncode.offerEncoder(buffer);
+                            Log.d("recod", "aac大小：" + ret.length);
+                            writeData(ret, 2);
+                        }
+                    }
+                    //录制结束
+                    record.stop();
+                    //释放编码器
+                    aacMediaEncode.close();
+                    // dos.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }.start();
+    }
 
     /**
      * 将数据传输给服务器
      *
      * @param outData
      */
-    private void writeData(final byte[] outData) {
+    private void writeData(final byte[] outData, final int type) {
         new Thread() {
             @Override
             public void run() {
                 try {
                     if (!socket.isClosed()) {
                         if (socket.isConnected()) {
-                            // 步骤1：从Socket 获得输出流对象OutputStream
-                            // 该对象作用：发送数据
                             outputStream = socket.getOutputStream();
-                            // 步骤2：写入需要发送的数据到输出流对象中
-                            outputStream.write(outData);
-                            // 特别注意：数据的结尾加上换行符才可让服务器端的readline()停止阻塞
-                            // 步骤3：发送数据到服务端
-                            outputStream.flush();
-                            byte[] temp = new byte[4];
-                            System.arraycopy(outData, 0, temp, 0, 4);
-                            Log.d("writeSteam", "正在写入数据长度：" + outData.length + ",前四个字节的值：" + bytesToInt(temp, 0));
+                            //给每一帧加一个自定义的头
+                            if (outData.length != 0) {
+                                byte[] headOut = creatHead(outData, type);
+                                outputStream.write(headOut);
+                                outputStream.flush();
+//                                runOnUiThread(new Runnable() {
+//                                    @Override
+//                                    public void run() {
+//                                        Toast.makeText(MainActivity.this,"加入头部后写入数据长度：",Toast.LENGTH_SHORT).show();
+//
+//                                    }
+//                                });
+                                Log.d("writeSteam", "加入头部后写入数据长度：" + headOut.length);
+                            }
                         } else {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    Toast.makeText(MainActivity.this, "发送失败，socket断开了连接", Toast.LENGTH_SHORT).show();
+
+                                }
+                            });
                             Log.d("writeSteam", "发送失败，socket断开了连接");
                         }
                     } else {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(MainActivity.this, "发送失败，socket关闭", Toast.LENGTH_SHORT).show();
+                            }
+                        });
                         Log.d("writeSteam", "发送失败，socket关闭");
                     }
                 } catch (IOException e) {
@@ -357,18 +431,46 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         }.start();
     }
 
-    private List<Byte> byteList = new ArrayList<>();
-    private List<Integer> index = new ArrayList<>();
-    private int flag = 0;
+    /**
+     * 给每一帧添加一个头
+     */
+    private byte[] creatHead(byte[] out, int type) {
+        String head = "";
+        if (type == 1) {
+            head = "start&video&" + System.currentTimeMillis() + "&" + out.length + "&end";
+        } else {
+            head = "start&music&" + System.currentTimeMillis() + "&" + out.length + "&end";
+        }
+        byte[] headBytes = new byte[40];
+        System.arraycopy(head.getBytes(), 0, headBytes, 0, head.getBytes().length);
+        Log.d("writeSteam", "头部长度：" + headBytes.length);
+        for (byte b : "start".getBytes()) {
+            Log.d("writeSteam", "头部数据：" + b);
+        }
+        if (headBytes[0] == 0x73 && headBytes[1] == 0x74 && headBytes[2] == 0x61 && headBytes[3] == 0x72 && headBytes[4] == 0x74) {
+            Log.d("writeSteam", "确认是头部");
+        }
+        String outHead = new String(headBytes);
+        Log.d("writeSteam", "头部：" + outHead);
+        String[] headSplit = outHead.split("&");
+        for (String s : headSplit) {
+            Log.d("writeSteam", "截取部分：" + s);
+        }
+        Log.d("writeSteam", "加入头部前数据长度：" + out.length);
+        byte[] headByteOut = new byte[out.length + 40];
+        //将头部拷入数组
+        System.arraycopy(headBytes, 0, headByteOut, 0, headBytes.length);
+        //将帧数据拷入数组
+        System.arraycopy(out, 0, headByteOut, headBytes.length, out.length);
+        return headByteOut;
+    }
 
     private void startSocketListener() {
-        byte[] head = {0x00, 0x00, 0x00, 0x01};
-        // 利用线程池直接开启一个线程 & 执行该线程
-        // 步骤1：创建输入流对象InputStream
         threadListener = new Thread() {
             @Override
             public void run() {
                 super.run();
+                socket = App.getInstance().getSocket(SERVER_HOST);
                 while (true) {
                     if (!socket.isClosed()) {
                         if (socket.isConnected()) {
@@ -379,61 +481,86 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                                     DataInputStream input = new DataInputStream(is);
                                     byte[] bytes = new byte[10000];
                                     int le = input.read(bytes);
+                                    if (le == -1) continue;
                                     byte[] out = new byte[le];
                                     System.arraycopy(bytes, 0, out, 0, out.length);
-                                    Util.save(out, 0, out.length, path, true);
-                                    Log.e("readSteam", "接收的数据长度："  +out.length);
+                                    //  Util.save(out, 0, out.length, path, true);
+//                                    Toast.makeText(MainActivity.this,"接收的数据长度：" + out.length,Toast.LENGTH_SHORT).show();
+                                    Log.e("readSteam", "接收的数据长度：" + out.length);
                                     if (le != -1) {
-
-                                        for (Byte b:byteList){
-                                            Log.e("after","上次剩余数据："+b.byteValue());
-                                        }
-                                        for (byte data : out) {
-                                            byteList.add(data);
-                                            Log.e("tag","正在录入数据："+data);
-                                            for (Byte b:byteList){
-                                                Log.e("tagfter","录入之后的新数据："+b.byteValue());
-                                            }
-                                        }
-                                        for (int i = 0; i < byteList.size(); i++) {
-                                            if (i + 3 <= out.length) {
-                                                if (byteList.get(i).byteValue() == 0x00 && byteList.get(i + 1).byteValue() == 0x00 && byteList.get(i + 2).byteValue() == 0x00 && byteList.get(i + 3).byteValue() == 0x01) {
-                                                    index.add(i);
+                                        byte[] addByte = new byte[out.length];
+                                        if (last != null) {
+                                            if (last.length != 0) {
+                                                for (byte b : last) {
+//                                                    Log.e("last", "-剩余数据##########################" + b);
+                                                }
+                                                //将上次结余的数据拼接在新来数据前面
+                                                addByte = new byte[out.length + last.length];
+                                                System.arraycopy(last, 0, addByte, 0, last.length);
+                                                System.arraycopy(out, 0, addByte, last.length, out.length);
+                                                for (byte b : addByte) {
+//                                                    Log.e("addByte", "-合并的数据++++++++++++++++++++++" + b);
                                                 }
                                             }
+                                        } else {
+                                            addByte = new byte[out.length];
+                                            System.arraycopy(out, 0, addByte, 0, out.length);
+                                            for (byte b : addByte) {
+//                                                Log.e("addByte", "合并的数据++++++++++++++++++++++" + b);
+                                            }
                                         }
-                                        Log.e("index","index="+index.size());
-                                        if (index.size()>=2){
-                                            //截取其中的一帧
-                                            byte[] frameBy = new byte[index.get(1)-index.get(0)];
-                                            int a = 0;
-                                            for (int i = index.get(0); i <=index.get(1)-1; i++) {
-                                                frameBy[a] = byteList.get(i).byteValue();
-                                                ++a;
+
+                                        for (int i = 0; i < addByte.length; i++) {
+//                                            Log.e("readSteam", "接收的数据" + addByte[i]);
+                                            if (i + 39 < addByte.length) {
+                                                //先截取返回字符串的前40位，判断是否是头
+                                                byte[] head = new byte[40];
+//                                                Log.e("readSteam", "所在位置：" + i);
+                                                System.arraycopy(addByte, i, head, 0, head.length);
+                                                //判读是否是帧头
+                                                if (head[0] == 0x73 && head[1] == 0x74 && head[2] == 0x61 && head[3] == 0x72 && head[4] == 0x74) {
+
+                                                    String hd = new String(head);
+                                                    String[] headSplit = hd.split("&");
+                                                    for (String s : headSplit) {
+//                                                        Log.e("readSteam", "截取部分：" + s);
+                                                    }
+                                                    String type = headSplit[1];
+                                                    String time = headSplit[2];
+                                                    String len = headSplit[3];
+                                                    int frameLength = Integer.parseInt(len);
+//                                                    index.add(i+40);
+//                                                    Log.e("readSteam", "==================================================================：" + frameLength+",    "+addByte.length);
+
+                                                    if (i + 40 + frameLength <= addByte.length) {//表明还可以凑齐一帧
+                                                        byte[] frameBy = new byte[frameLength];
+                                                        System.arraycopy(addByte, i + 40, frameBy, 0, frameBy.length);
+                                                        if (type.equals("video")) {
+                                                            mPlayer.decodeH264(frameBy);
+                                                        } else if (type.equals("music")) {
+
+                                                        }
+
+                                                        i = i + 38 + frameLength;
+//                                                        Thread.sleep(20);
+                                                    } else {
+                                                        //变成结余数据
+                                                        last = new byte[addByte.length - i];
+                                                        System.arraycopy(addByte, i, last, 0, last.length);
+                                                        break;
+                                                    }
+                                                }
+                                            } else {//直接是剩余的
+                                                last = new byte[addByte.length - i];
+                                                System.arraycopy(addByte, i, last, 0, last.length);
+                                                break;
                                             }
-                                            //传给H264解码器
-                                            for (byte b:frameBy){
-                                                Log.e("indecode","传入解码的数据："+b);
-                                            }
-                                            if (frameBy.length!=0){
-                                                mPlayer.decodeH264(frameBy);
-                                            }
-                                            Log.e("tag","frameBy的长度："+frameBy.length);
-                                            //从集合中删除上一帧之前的数据
-                                            for (int i = index.get(1)-1; i >=0; i--) {
-                                                byteList.remove(i);
-                                            }
-                                            for (Byte b:byteList){
-                                                Log.e("after","删除之后的剩余数据："+b.byteValue());
-                                            }
-                                            index.clear();
                                         }
                                     }
                                 }
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
-
                         } else {
 //                            Log.e("readSteam", "接受失败，socket断开了连接");
                         }
@@ -444,21 +571,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
             }
         };
         threadListener.start();
-    }
-
-    public byte[] subBytes(byte[] src, int begin, int count) {
-        byte[] bs = new byte[count];
-        for (int i = begin; i < begin + count; i++) bs[i - begin] = src[i];
-        return bs;
-    }
-
-    public static int bytesToInt(byte[] src, int offset) {
-        int value;
-        value = (int) ((src[offset] & 0xFF)
-                | ((src[offset + 1] & 0xFF) << 8)
-                | ((src[offset + 2] & 0xFF) << 16)
-                | ((src[offset + 3] & 0xFF) << 24));
-        return value;
     }
 
     /**
@@ -486,14 +598,18 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
      */
     public synchronized void stopPreview() {
         if (mCamera != null) {
-            mCamera.stopPreview();
-            mCamera.setPreviewCallbackWithBuffer(null);
+//            mCamera.stopPreview();
+//            mCamera.setPreviewCallbackWithBuffer(null);
             started = false;
             btnSwitch.setText("开始");
             try {
                 if (socket != null) {
                     if (socket.isConnected()) {
-                        socket.close();
+                        //socket.close();
+                        socket.shutdownInput();
+                        App.getInstance().removeSocket("47.101.33.252");
+                        // socket.shutdownOutput();
+
                     }
                 }
             } catch (IOException e) {
@@ -542,23 +658,25 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.btn_switch:
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        socket = App.getInstance().getSocket();
-                        Message msg = Message.obtain();
-                        if (socket == null) {
-                            msg.what = 1;
-                            handler.sendMessage(msg);
-                        } else if (!socket.isConnected()) {
-                            msg.what = 2;
-                            handler.sendMessage(msg);
-                        } else {
-                            msg.what = 3;
-                            handler.sendMessage(msg);
-                        }
-                    }
-                }).start();
+                Intent intent = new Intent(MainActivity.this,RecordActivity.class);
+                startActivity(intent);
+//                new Thread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        socket = App.getInstance().getSocket("47.101.33.252");
+//                        Message msg = Message.obtain();
+////                        if (socket == null) {
+////                            msg.what = 1;
+////                            handler.sendMessage(msg);
+////                        } else if (!socket.isConnected()) {
+////                            msg.what = 2;
+////                            handler.sendMessage(msg);
+////                        } else {
+//                        msg.what = 3;
+//                        handler.sendMessage(msg);
+////                        }
+//                    }
+//                }).start();
 
                 break;
         }
@@ -568,6 +686,14 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     protected void onDestroy() {
         super.onDestroy();
         destroyCamera();
+        try {
+            // socket.close();
+            socket.shutdownInput();
+            //socket.shutdownOutput();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         mMediaCodec.stop();
         mMediaCodec.release();
         mMediaCodec = null;

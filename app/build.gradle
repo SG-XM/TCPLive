@@ -7,7 +7,7 @@ android {
     buildToolsVersion "26.0.0"
 
     defaultConfig {
-        applicationId "org.easydarwin.blogdemos"
+        applicationId "org.zq.live"
         minSdkVersion 16
         targetSdkVersion 28
         versionCode 1
